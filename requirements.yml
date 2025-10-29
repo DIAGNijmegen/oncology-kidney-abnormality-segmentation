@@ -1,0 +1,16 @@
+name: kidney-abnormality-segmentation
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - pytorch=2.2.2
+  - monai=1.4.0
+  - pip:
+      - TotalSegmentator
+      - nnunetv2==2.4.2
+      - blosc2
+      - acvl-utils==0.2
+      - -e .

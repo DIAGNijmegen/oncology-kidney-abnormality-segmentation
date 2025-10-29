@@ -32,24 +32,19 @@ export nnUNet_results='/path/to/.totalsegmentator/nnunet/results'
 ## Running the algorithm
 When using the container build using the Dockerfile you can mount the input path containing the CT scans to "/input", the output path to "/output", and the folder containing downloaded model weights to "/opt/ml/model". 
 
-When using a virtual or conda environment, you need to set the input, output and model directories using command line arguments:
-```bash
-    --input
-    --output
-    --model
-```
+When using a virtual or conda environment, you can either use the command line arguments to set the folder paths or set them as environment variables. 
 
 ### To start the script
-Kick-off the script with ```python main.py``` with the following input arguments:
+You can kick-off the script with:
 
 ```bash
-    --use_cropping (optionally)
+python main.py --use-cropping (optional) --input-path (optional) --output-path(optional) --model-path (optional)
 ```
 
 ## Pipeline:
 The algorithm does the following steps for each CT scan (in .mha format) in the input folder:
 1. read ct scan (.mha) using SimpleITK
-2. if flag --use_cropping is set: use TotalSegmentator to find bladder and lungs, if found, crop around that in all three directions. 
+2. if flag --use-cropping is set: use TotalSegmentator to find bladder and lungs, if found, crop around that in all three directions. 
 3. use trained nnUNet to segment the kidneys and kidney abnormalities if present
 4. postprocess the kidney abnormality masks by removing small components (<3mm) and only keeping components attached to a kidney region, except when the abnormality component is larger than 100,000 mm^3.
 

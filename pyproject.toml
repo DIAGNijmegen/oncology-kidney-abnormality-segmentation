@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kidney_abnormality_segmentation"
+version = "1.0.0"
+description = "Kidney Abnormality Segmentation using nnUNet."
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "Apache License, Version 2.0 (the 'License)"}
+authors = [{name = "Sarah de Boer"}]
+dependencies = [
+  "monai==1.4.0",
+  "TotalSegmentator",
+  "nnunetv2==2.4.2",
+  "blosc2",
+  "acvl-utils==0.2"
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "black", "ruff"]
