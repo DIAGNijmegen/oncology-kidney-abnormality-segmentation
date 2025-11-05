@@ -77,7 +77,7 @@ def run():
         raise NotADirectoryError(f"Input path is not a directory: {ct_folder}")
 
     try:
-        all_cts = list(ct_folder.rglob("*.mha"))
+        all_cts = list(ct_folder.rglob("*.mha", "*.nii.gz"))
     except PermissionError as e:
         raise PermissionError(f"Cannot access {args.input_path}: {e}") from e
 
@@ -94,9 +94,12 @@ def run():
             print(f"[run] Skipping {input_ct_image_path.name} because not an image.")
             continue
         image_name = stem(str(input_ct_image_path))
+        file_extension = (
+            ".mha" if str(input_ct_image_path).endswith(".mha") else ".nii.gz"
+        )
         out_folder = args.output_path
         out_folder.mkdir(parents=True, exist_ok=True)
-        out_path = out_folder / f"{image_name}.mha"
+        out_path = out_folder / f"{image_name}.{file_extension}"
         if out_path.is_file():
             print(
                 f"[run] Skipping {input_ct_image_path.name} because output segmentation already exists for this image."
