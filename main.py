@@ -77,7 +77,7 @@ def run():
         raise NotADirectoryError(f"Input path is not a directory: {ct_folder}")
 
     try:
-        all_cts = list(ct_folder.rglob("*.mha", "*.nii.gz"))
+        all_cts = list(ct_folder.rglob("*.mha")) + list(ct_folder.rglob("*.nii.gz"))
     except PermissionError as e:
         raise PermissionError(f"Cannot access {args.input_path}: {e}") from e
 
