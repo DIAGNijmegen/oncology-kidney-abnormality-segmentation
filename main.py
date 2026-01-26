@@ -99,6 +99,8 @@ def run():
         )
         out_folder = args.output_path
         out_folder.mkdir(parents=True, exist_ok=True)
+
+        #find output 
         out_path = out_folder / f"{image_name}.{file_extension}"
         if out_path.is_file():
             print(

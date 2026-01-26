@@ -100,32 +100,84 @@ def process_tumors(
     return connected_tumors
 
 
+# def apply_size_threshold(
+#     tumor_mask: sitk.Image, diameter_threshold: float
+# ) -> sitk.Image:
+#     """
+#     Removes tumor components below the specified size threshold.
+#     """
+#     relabel_filter = sitk.RelabelComponentImageFilter()
+#     labeled_tumors = relabel_filter.Execute(tumor_mask)
+
+#     stats_filter = sitk.LabelShapeStatisticsImageFilter()
+#     stats_filter.Execute(labeled_tumors)
+
+#     filtered_tumors = sitk.Image(tumor_mask.GetSize(), sitk.sitkUInt8)
+#     filtered_tumors.CopyInformation(tumor_mask)
+
+#     for label in stats_filter.GetLabels():
+#         if (
+#             stats_filter.GetEquivalentEllipsoidDiameter(label)[0] >= diameter_threshold
+#             or stats_filter.GetEquivalentEllipsoidDiameter(label)[1]
+#             >= diameter_threshold
+#             or stats_filter.GetEquivalentEllipsoidDiameter(label)[2]
+#             >= diameter_threshold
+#         ):
+#             filtered_tumors = sitk.Or(filtered_tumors, labeled_tumors == label)
+
+#     return filtered_tumors
+
+
 def apply_size_threshold(
     tumor_mask: sitk.Image, diameter_threshold: float
 ) -> sitk.Image:
     """
-    Removes tumor components below the specified size threshold.
+    Keeps connected components whose maximum axial-plane (XY) Feret diameter across slices
+    is >= diameter_threshold (physical units, e.g. mm).
+
+    Input: binary mask
+    Output: binary mask
     """
-    relabel_filter = sitk.RelabelComponentImageFilter()
-    labeled_tumors = relabel_filter.Execute(tumor_mask)
+    labeled = sitk.RelabelComponentImageFilter().Execute(tumor_mask)
 
-    stats_filter = sitk.LabelShapeStatisticsImageFilter()
-    stats_filter.Execute(labeled_tumors)
+    stats3d = sitk.LabelShapeStatisticsImageFilter()
+    stats3d.Execute(labeled)
 
-    filtered_tumors = sitk.Image(tumor_mask.GetSize(), sitk.sitkUInt8)
-    filtered_tumors.CopyInformation(tumor_mask)
+    out = sitk.Image(tumor_mask.GetSize(), sitk.sitkUInt8)
+    out.CopyInformation(tumor_mask)
 
-    for label in stats_filter.GetLabels():
-        if (
-            stats_filter.GetEquivalentEllipsoidDiameter(label)[0] >= diameter_threshold
-            or stats_filter.GetEquivalentEllipsoidDiameter(label)[1]
-            >= diameter_threshold
-            or stats_filter.GetEquivalentEllipsoidDiameter(label)[2]
-            >= diameter_threshold
-        ):
-            filtered_tumors = sitk.Or(filtered_tumors, labeled_tumors == label)
+    size = list(labeled.GetSize())  # (x, y, z)
 
-    return filtered_tumors
+    stats2d = sitk.LabelShapeStatisticsImageFilter()
+    stats2d.SetComputeFeretDiameter(True)
+
+    for lab in stats3d.GetLabels():
+        # Use bounding box to restrict which slices we check
+        # BoundingBox is (x, y, z, size_x, size_y, size_z)
+        bb = stats3d.GetBoundingBox(lab)
+        z0 = int(bb[2])
+        z1 = int(bb[2] + bb[5])  # exclusive
+
+        best = 0.0
+        for z in range(z0, z1):
+            slice_lab = sitk.Extract(
+                labeled, size=[size[0], size[1], 0], index=[0, 0, z]
+            )
+            slice_bin = sitk.Cast(slice_lab == lab, sitk.sitkUInt8)
+
+            # If label exists on this slice, it will be the only foreground (value 1)
+            stats2d.Execute(slice_bin)
+            if stats2d.HasLabel(1):
+                d = stats2d.GetFeretDiameter(1)
+                if d > best:
+                    best = d
+                    if best >= diameter_threshold:
+                        break
+
+        if best >= diameter_threshold:
+            out = sitk.Or(out, sitk.Cast(labeled == lab, sitk.sitkUInt8))
+
+    return out
 
 
 def combine_masks(kidney_mask: sitk.Image, tumor_mask: sitk.Image) -> sitk.Image:
