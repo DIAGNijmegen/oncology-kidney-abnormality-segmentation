@@ -100,34 +100,6 @@ def process_tumors(
     return connected_tumors
 
 
-# def apply_size_threshold(
-#     tumor_mask: sitk.Image, diameter_threshold: float
-# ) -> sitk.Image:
-#     """
-#     Removes tumor components below the specified size threshold.
-#     """
-#     relabel_filter = sitk.RelabelComponentImageFilter()
-#     labeled_tumors = relabel_filter.Execute(tumor_mask)
-
-#     stats_filter = sitk.LabelShapeStatisticsImageFilter()
-#     stats_filter.Execute(labeled_tumors)
-
-#     filtered_tumors = sitk.Image(tumor_mask.GetSize(), sitk.sitkUInt8)
-#     filtered_tumors.CopyInformation(tumor_mask)
-
-#     for label in stats_filter.GetLabels():
-#         if (
-#             stats_filter.GetEquivalentEllipsoidDiameter(label)[0] >= diameter_threshold
-#             or stats_filter.GetEquivalentEllipsoidDiameter(label)[1]
-#             >= diameter_threshold
-#             or stats_filter.GetEquivalentEllipsoidDiameter(label)[2]
-#             >= diameter_threshold
-#         ):
-#             filtered_tumors = sitk.Or(filtered_tumors, labeled_tumors == label)
-
-#     return filtered_tumors
-
-
 def apply_size_threshold(
     tumor_mask: sitk.Image, diameter_threshold: float
 ) -> sitk.Image:
