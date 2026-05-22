@@ -2,9 +2,16 @@
 
 This repository contains the code to setup the pipeline to run the Kidney Abnormality Segmentation model on CT scans. When you use this code base and the corresponding model weights, please cite our work: [kidney abnormality segmentation paper](https://arxiv.org/abs/2505.07573). The pipeline uses nnUNet [[1]](#1),[[2]](#2) and TotalSegmentator [[3]](#3), please also cite these works. 
 
-## Model weights
+## Model weights and version
 
 The model weights can be downloaded from Zenodo: [model weights download](https://doi.org/10.5281/zenodo.15315330).
+
+Model version: nnU-Net ResEnc L 3D fullres
+
+Segmentation label map:
+`0` — Background
+`1` — Kidney
+`2` — Renal mass, not further specified as cystic/solid mass
 
 ## Grand-challenge algorithm
 A ready to use algorithm for research purposes is also available on grand-challenge.org: [algorithm](https://grand-challenge.org/algorithms/kidney-abnormality-segmentation/).
