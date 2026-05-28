@@ -1,6 +1,6 @@
 # Kidney Abnormality Segmentation model
 
-This repository contains the code to setup the pipeline to run the Kidney Abnormality Segmentation model on CT scans. When you use this code base and the corresponding model weights, please cite our work: [kidney abnormality segmentation paper](https://arxiv.org/abs/2505.07573). The pipeline uses nnUNet [[1]](#1),[[2]](#2) and TotalSegmentator [[3]](#3), please also cite these works. 
+This repository contains the code to setup the pipeline to run the Kidney Abnormality Segmentation model on CT scans. When you use this code base and the corresponding model weights, please cite our work: [kidney abnormality segmentation paper](https://doi.org/10.59275/j.melba.2026-67g5). The pipeline uses nnUNet [[1]](#1),[[2]](#2) and TotalSegmentator [[3]](#3), please also cite these works. 
 
 ## Model weights and version
 
@@ -76,7 +76,10 @@ This tool was developed by the Oncology Research Group at the Diagnostic Image A
 - Sarah de Boer: Sarah.deBoer@radboudumc.nl
 - Alessa Hering: Alessa.Hering@radboudumc.nl
 
-## BiBTeX
+## Citation
+
+If you use Renal-Net for your research, please cite the [kidney abnormality segmentation paper](https://doi.org/10.59275/j.melba.2026-67g5).:
+
 ```
 @article{deboer2026,
     title = "Robust Renal Mass Segmentation on CT: A Validation Study of an AI-Based Framework",
@@ -85,9 +88,9 @@ This tool was developed by the Oncology Research Group at the Diagnostic Image A
     volume = "2026",
     issue = "May 2026 issue",
     year = "2026",
-    pages = "229-",
+    pages = "229--251",
     issn = "2766-905X",
-    doi = "[https://doi.org/10.59275/j.melba.2026-912a](https://doi.org/10.59275/j.melba.2026-bf93)",
+    doi = "https://doi.org/10.59275/j.melba.2026-67g5",
     url = "https://melba-journal.org/2026:012"
 }
 ```
