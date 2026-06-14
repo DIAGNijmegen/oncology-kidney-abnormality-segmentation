@@ -53,7 +53,10 @@ def segment_ct_image(input_ct, model_path: str) -> sitk.Image:
             # copy to /tmp to guarantee write-perms / uniform path
             ct = sitk.ReadImage(input_ct)
             ct = resample_volume(ct, new_spacing=(0.75, 0.75, 0.75))
-            tmp_input = os.path.join("/tmp", os.path.basename(input_ct))
+
+            # Make sure the tempname is longer than 5 characters (weird nnUNet quirk)
+            temp_name =  "tempimage_" + os.path.basename(input_ct) 
+            tmp_input = os.path.join("/tmp", temp_name)
             sitk.WriteImage(ct, tmp_input)
         else:
             raise ValueError(
