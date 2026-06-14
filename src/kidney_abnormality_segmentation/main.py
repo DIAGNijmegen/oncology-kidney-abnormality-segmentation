@@ -101,13 +101,6 @@ def initialize_parser() -> argparse.Namespace:
         help="Enable ROI cropping based on TotalSegmentator (default: disabled).",
         default=False,
     )
-    
-    parser.add_argument(
-        "--no_postprocessing",
-        action="store_true",
-        help="Disable postprocessing",
-        default=False,
-    )
 
     # Print help if no arguments are provided at all
     if len(sys.argv) == 1:

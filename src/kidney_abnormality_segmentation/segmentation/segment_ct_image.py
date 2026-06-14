@@ -134,5 +134,4 @@ def segment_ct_image(input_ct, model_path: str) -> sitk.Image:
         return segmentation_sitk
 
     except Exception as e:
-        print(f"Failed during segmentation and postprocessing due to: {e}")
-        sys.exit(1)
+        raise RuntimeError(f"Failed during segmentation: {e}") from e

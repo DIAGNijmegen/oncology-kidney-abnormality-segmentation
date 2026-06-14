@@ -151,9 +151,4 @@ def extract_roi(ct_image: sitk.Image) -> sitk.Image:
         return cropped_image
 
     except Exception as e:
-        print(
-            "An error occurred during ROI extraction:",
-            e,
-            "\nAborting execution of the algorithm.",
-        )
-        sys.exit(1)
+        raise RuntimeError(f"An error occurred during ROI extraction: {e}") from e
