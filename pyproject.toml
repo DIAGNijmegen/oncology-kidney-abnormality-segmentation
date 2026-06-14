@@ -26,4 +26,4 @@ dev = ["pytest", "ruff"]
 where = ["src"]
 
 [project.scripts]
-renal-net = "kidney_abnormality_segmentation.main:run"
+renal-net = "kidney_abnormality_segmentation.main:main"

@@ -13,24 +13,10 @@
 #  limitations under the License.
 
 import argparse
-import gc
-import SimpleITK
 import sys
 
 from pathlib import Path
-
-from kidney_abnormality_segmentation.config import CT_EXTENSIONS, ensure_totalsegmentator_env
-ensure_totalsegmentator_env()
-
-from kidney_abnormality_segmentation.postprocessing.postprocess_segmentation_mask import (
-    postprocess_segmentation_mask,
-)
-from kidney_abnormality_segmentation.preprocessing.extract_roi import extract_roi
-from kidney_abnormality_segmentation.segmentation.segment_ct_image import (
-    segment_ct_image,
-)
-from kidney_abnormality_segmentation.utils import resample_volume, stem
-
+from kidney_abnormality_segmentation.config import CT_EXTENSIONS
 
 
 
@@ -132,7 +118,7 @@ def initialize_parser() -> argparse.Namespace:
     return args
 
 
-def run():
+def main():
     args = initialize_parser()
 
     # List all CT files under /input
@@ -140,6 +126,17 @@ def run():
     if not input_path.exists():
         raise FileNotFoundError(f"Input does not exist: {input_path}")
 
+    # Check model path
+    if not args.model_path.exists():
+        raise FileNotFoundError(f"Model path does not exist: {input_path}")
+    if not (args.model_path / "nnUNet_results").exists():
+        raise FileNotFoundError("Model path does not include nnUNet_results folder")
+
+    # Output path
+    if not args.output_path.exists():
+        args.output_path.mkdir(parents=True, exist_ok = True)
+
+    # Read files
     if input_path.is_dir():
         try:
             patterns = ["*"+ext for ext in CT_EXTENSIONS]
@@ -159,68 +156,11 @@ def run():
         print(f"No CT files found under {input_path}")
         sys.exit(1)
 
-    print(f"[run] Found {len(all_cts)} input CTs to process")
-    crop_roi = args.use_cropping
+    print(f"[main] Found {len(all_cts)} input CTs to process")
 
-    for input_ct_image_path in all_cts:
-        print(f"[run] Processing {input_ct_image_path.name}")
-        if input_ct_image_path.name.startswith("."):
-            print(f"[run] Skipping {input_ct_image_path.name} because not an image.")
-            continue
-        image_name = stem(str(input_ct_image_path))
-        file_extension = (
-            ".mha" if str(input_ct_image_path).endswith(".mha") else ".nii.gz"
-        )
-        out_folder = args.output_path
-        out_folder.mkdir(parents=True, exist_ok=True)
+    from kidney_abnormality_segmentation.inference import run
+    run(all_cts, args.model_path, args.output_path, args.use_cropping)
 
-        # find output
-        out_path = out_folder / f"{image_name}{file_extension}"
-        if out_path.is_file():
-            print(
-                f"[run] Skipping {input_ct_image_path.name} because output segmentation already exists for this image."
-            )
-            continue
-        # 3) Decide what to hand to segment_ct_image:
-        #    - If cropping: read into memory, crop, then pass the cropped SITK.Image.
-        #    - If no cropping: NEVER read the full CT. Pass the filepath string instead.
-        orig_spacing = SimpleITK.ReadImage(str(input_ct_image_path)).GetSpacing()
-        if crop_roi:
-            print("[run] Cropping ROI; will read full CT into memory.")
-            full_ct = SimpleITK.ReadImage(str(input_ct_image_path))
-            input_for_seg = extract_roi(full_ct)
-            # free the full CT
-            del full_ct
-            gc.collect()
-        else:
-            print(
-                "[run] No cropping requested; will segment from disk without reading full CT."
-            )
-            input_for_seg = str(input_ct_image_path)
-
-        # 4) Segment (this now never loads the full on-disk CT into RAM)
-        print("[run] Calling segment_ct_image() …")
-        segmentation_sitk = segment_ct_image(input_for_seg, str(args.model_path))
-
-        # 5) Free any remaining cropped image if it was in RAM
-        if isinstance(input_for_seg, SimpleITK.Image):
-            del input_for_seg
-            gc.collect()
-
-        # 6) Postprocess & write out
-        post_sitk = postprocess_segmentation_mask(segmentation_sitk)
-        final_image = resample_volume(
-            post_sitk,
-            new_spacing=orig_spacing,
-            interpolator=SimpleITK.sitkNearestNeighbor,
-        )
-        print(f"[run] Writing final mask to: {out_path}")
-
-        SimpleITK.WriteImage(final_image, str(out_path))
-
-    print("[run] Done.")
-    return 0
-
-
+    
 if __name__ == "__main__":
-    sys.exit(run())
+    sys.exit(main())
