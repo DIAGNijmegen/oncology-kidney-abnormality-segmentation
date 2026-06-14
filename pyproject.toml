@@ -13,6 +13,7 @@ authors = [{name = "Sarah de Boer"}]
 dependencies = [
   "monai==1.4.0",
   "TotalSegmentator",
+  "torch==2.2.2",
   "nnunetv2==2.4.2",
   "blosc2",
   "acvl-utils==0.2"

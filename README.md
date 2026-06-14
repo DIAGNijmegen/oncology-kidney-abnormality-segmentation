@@ -17,7 +17,7 @@ Segmentation label map:
 A ready to use algorithm for research purposes is also available on grand-challenge.org: [algorithm](https://grand-challenge.org/algorithms/kidney-abnormality-segmentation/).
 
 ## Setup
-The repository contains a [Dockerfile]() that can be used to create the environment. Alternatively, you can use conda or a venv with at least python 3.11 and the requirements (see [requirements]()).
+The repository contains a [Dockerfile]() that can be used to create the environment. Alternatively, you can use conda or a venv with at least python 3.11 and the requirements (see [requirements](requirements.yml)).
 
 The package can be installed from source: 
 
