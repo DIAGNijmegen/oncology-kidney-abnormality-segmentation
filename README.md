@@ -27,14 +27,6 @@ cd oncology-kidney-abnormality-segmentation
 pip install -e .
 ```
 
-TotalSegmentator will install the needed models into your setup. Before running the main script, you need to set the following environment variables:
-
-```bash
-export nnUNet_preprocessed='/path/to/.totalsegmentator/nnunet/results'
-export nnUNet_raw='/path/to/.totalsegmentator/nnunet/results'
-export nnUNet_results='/path/to/.totalsegmentator/nnunet/results'
-```
-
 ## Running the algorithm
 When using the container build using the Dockerfile you can mount the input path containing the CT scans to "/input", the output path to "/output", and the folder containing downloaded model weights to "/opt/ml/model". 
 
@@ -48,14 +40,19 @@ python main.py --use-cropping (optional) --input-path (optional) --output-path(o
 ```
 Model path should point to the directory above `nnUNet_results`.
 
-## Pipeline:
-The algorithm does the following steps for each CT scan (in .mha format) in the input folder:
-1. read ct scan (.mha) using SimpleITK
-2. if flag --use-cropping is set: use TotalSegmentator to find bladder and lungs, if found, crop around that in all three directions. 
-3. use trained nnUNet to segment the kidneys and kidney abnormalities if present
-4. postprocess the kidney abnormality masks by removing small components (<3mm) and only keeping components attached to a kidney region, except when the abnormality component is larger than 100,000 mm^3.
 
-We made the cropping using TotalSegmentator optional. We sporadically noticed that for patients with a larger BMI, the cropping using the lungs as reference point resulted in removing parts of the kidney from the ROI. Performance gains using the cropping were minimal to begin with and therefore not using this step will not result in any performance loss.
+## Pipeline:
+The algorithm does the following steps for each CT scan (in .mha / .nii.gz format) in the input folder:
+1. read ct scan using SimpleITK
+2. use trained nnUNet to segment the kidneys and kidney abnormalities if present
+3. postprocess the kidney abnormality masks by removing small components (<3mm) and only keeping components attached to a kidney region, except when the abnormality component is larger than 100,000 mm^3.
+
+## Cropping
+You can crop to a target regions based by setting `--use-cropping`.  This uses TotalSegmentator to find bladder and lungs, and if found, crops around that in all three directions. We read TotalSegmentator weights from: `~/.totalsegmentator/nnunet/results`. If they are in a different location plase specify this environmental variable before executing the script:
+```bash
+export nnUNet_results='/path/to/.totalsegmentator/nnunet/results'
+```
+We sporadically noticed that for patients with a larger BMI, the cropping using the lungs as reference point resulted in removing parts of the kidney from the ROI. Performance gains using the cropping were minimal to begin with and therefore not using this step will not result in any performance loss.
 
 ## Issues
 Please feel free to raise any issues you encounter [here](https://github.com/DIAGNijmegen/oncology-kidney-abnormality-segmentation/issues).

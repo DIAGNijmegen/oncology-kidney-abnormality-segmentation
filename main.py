@@ -19,6 +19,9 @@ import sys
 
 from pathlib import Path
 
+from kidney_abnormality_segmentation.config import CT_EXTENSIONS, ensure_totalsegmentator_env
+ensure_totalsegmentator_env()
+
 from kidney_abnormality_segmentation.postprocessing.postprocess_segmentation_mask import (
     postprocess_segmentation_mask,
 )
@@ -27,7 +30,7 @@ from kidney_abnormality_segmentation.segmentation.segment_ct_image import (
     segment_ct_image,
 )
 from kidney_abnormality_segmentation.utils import resample_volume, stem
-from kidney_abnormality_segmentation.config import CT_EXTENSIONS
+
 
 
 

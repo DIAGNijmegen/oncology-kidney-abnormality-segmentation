@@ -7,6 +7,11 @@ DEFAULT_OUTPUT_PATH = Path("/output")
 DEFAULT_MODEL_PATH = Path("/opt/ml/model")
 
 
+def ensure_totalsegmentator_env():
+    default = str(Path.home() / ".totalsegmentator" / "nnunet" / "results")
+    for var in ("nnUNet_preprocessed", "nnUNet_raw", "nnUNet_results"):
+        os.environ.setdefault(var, default)
+
 def default_input_path() -> Path:
     """Return default input path, allowing override via env var."""
     return Path(os.getenv("INPUT_PATH", DEFAULT_INPUT_PATH))
