@@ -46,6 +46,7 @@ You can kick-off the script with:
 ```bash
 python main.py --use-cropping (optional) --input-path (optional) --output-path(optional) --model-path (optional)
 ```
+Model path should point to the directory above `nnUNet_results`.
 
 ## Pipeline:
 The algorithm does the following steps for each CT scan (in .mha format) in the input folder:
