@@ -19,19 +19,19 @@ from pathlib import Path
 
 import SimpleITK
 
-from src.kidney_abnormality_segmentation.config import (
+from kidney_abnormality_segmentation.config import (
     default_input_path,
     default_model_path,
     default_output_path,
 )
-from src.kidney_abnormality_segmentation.postprocessing.postprocess_segmentation_mask import (
+from kidney_abnormality_segmentation.postprocessing.postprocess_segmentation_mask import (
     postprocess_segmentation_mask,
 )
-from src.kidney_abnormality_segmentation.preprocessing.extract_roi import extract_roi
-from src.kidney_abnormality_segmentation.segmentation.segment_ct_image import (
+from kidney_abnormality_segmentation.preprocessing.extract_roi import extract_roi
+from kidney_abnormality_segmentation.segmentation.segment_ct_image import (
     segment_ct_image,
 )
-from src.kidney_abnormality_segmentation.utils import resample_volume, stem
+from kidney_abnormality_segmentation.utils import resample_volume, stem
 
 
 def build_parser() -> ArgumentParser:

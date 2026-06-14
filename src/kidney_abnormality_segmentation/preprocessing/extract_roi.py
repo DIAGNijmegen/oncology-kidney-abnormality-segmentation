@@ -20,7 +20,7 @@ import tempfile
 import SimpleITK as sitk
 from totalsegmentator.python_api import totalsegmentator
 
-from src.kidney_abnormality_segmentation.utils import crop_image, resample_volume
+from kidney_abnormality_segmentation.utils import crop_image, resample_volume
 
 
 def extract_roi(ct_image: sitk.Image) -> sitk.Image:

@@ -15,7 +15,7 @@
 import numpy as np
 import SimpleITK as sitk
 
-from src.kidney_abnormality_segmentation.utils import get_binary_mask
+from kidney_abnormality_segmentation.utils import get_binary_mask
 
 
 def process_tumors(

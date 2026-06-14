@@ -22,7 +22,7 @@ import SimpleITK as sitk
 import torch
 from nnunetv2.inference.predict_from_raw_data import nnUNetPredictor
 
-from src.kidney_abnormality_segmentation.utils import resample_volume
+from kidney_abnormality_segmentation.utils import resample_volume
 
 
 def segment_ct_image(input_ct, model_path: str) -> sitk.Image:
