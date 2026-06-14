@@ -1,4 +1,4 @@
-# Kidney Abnormality Segmentation model
+# Kidney Abnormality Segmentation Model
 
 This repository contains the code to setup the pipeline to run the Kidney Abnormality Segmentation model on CT scans. When you use this code base and the corresponding model weights, please cite our work: [kidney abnormality segmentation paper](https://doi.org/10.59275/j.melba.2026-67g5). The pipeline uses nnUNet [[1]](#1),[[2]](#2) and TotalSegmentator [[3]](#3), please also cite these works. 
 
