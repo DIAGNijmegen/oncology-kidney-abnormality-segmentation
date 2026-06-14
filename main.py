@@ -12,18 +12,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import argparse
 import gc
+import SimpleITK
 import sys
-from argparse import ArgumentParser
+
 from pathlib import Path
 
-import SimpleITK
-
-from kidney_abnormality_segmentation.config import (
-    default_input_path,
-    default_model_path,
-    default_output_path,
-)
 from kidney_abnormality_segmentation.postprocessing.postprocess_segmentation_mask import (
     postprocess_segmentation_mask,
 )
@@ -34,45 +29,112 @@ from kidney_abnormality_segmentation.segmentation.segment_ct_image import (
 from kidney_abnormality_segmentation.utils import resample_volume, stem
 
 
-def build_parser() -> ArgumentParser:
-    """Create and return the CLI argument parser."""
-    p = ArgumentParser(description="Process images and perform segmentation")
-    p.add_argument(
-        "--use-cropping",
-        action="store_true",
-        default=False,
-        help="Enable ROI cropping based on TotalSegmentator (default: disabled).",
+
+class TermStyle:
+    """
+    Manages ANSI escape codes for terminal styling, disabling them
+    if the output stream is not a TTY (e.g., output is redirected to a file).
+    """
+
+    # Check if the output stream is a terminal (TTY)
+    # We check stderr since that is where argparse prints help messages.
+    _is_tty = sys.stderr.isatty()
+
+    # --- Color Definitions ---
+    if _is_tty:
+        RED = "\033[31m"
+        GREEN = "\033[32m"   # darker green
+        YELLOW = "\033[33m"
+        CYAN = "\033[34m"    # dark blue
+        BOLD = "\033[1m"
+        RESET = "\033[0m"
+    else:
+        # Define empty strings if not running in a terminal
+        RED = GREEN = YELLOW = CYAN = BOLD = RESET = ""
+
+    @staticmethod
+    def style(text: str, color: str = "", bold: bool = False) -> str:
+        """Helper method to wrap text with color and optional bolding."""
+        prefix = color
+        if bold:
+            prefix = TermStyle.BOLD + prefix
+
+        # This will return "text" if TermStyle is using empty strings (non-TTY)
+        return f"{prefix}{text}{TermStyle.RESET}"
+
+
+def initialize_parser() -> argparse.Namespace:
+
+    name = TermStyle.style("Oncology Kidney Segmentation", bold=True)
+    desc = TermStyle.style(
+        "Segment kidneys and kidney abnomalities in abdominal contrast-enhanced CT", TermStyle.GREEN
     )
-    # Use Path typing and safer argument names (avoid shadowing builtins like `input`)
-    p.add_argument(
+
+    epilog = (
+        f"{TermStyle.BOLD}{'-'*20} Radboudumc OncoAI – 2026  {'-'*20}{TermStyle.RESET}\n"
+        f"Group website: {TermStyle.CYAN}https://www.diagnijmegen.nl/research/oncology/{TermStyle.RESET}\n"
+        f"Published paper: {TermStyle.CYAN}https://www.melba-journal.org/papers/2026:012.html{TermStyle.RESET}\n"
+    )
+
+    parser = argparse.ArgumentParser(
+        prog=name,
+        description=desc,
+        epilog=epilog,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+    parser.add_argument(
+        "-i",
         "--input-path",
         type=Path,
-        default=default_input_path(),
-        help="Input folder path (defaults to /input or $INPUT_PATH).",
+        required=True,
+        help="input image or directory with CT images",
     )
-    p.add_argument(
-        "--output-path",
-        type=Path,
-        default=default_output_path(),
-        help="Output folder path (defaults to /output or $OUTPUT_PATH).",
-    )
-    p.add_argument(
+
+    parser.add_argument(
+        "-m",
         "--model-path",
         type=Path,
-        default=default_model_path(),
-        help="Model weights folder path (defaults to /opt/ml/model or $MODEL_PATH).",
+        required=True,
+        help="path to the model weights",
     )
-    return p
+
+    parser.add_argument("-o",
+                        "--output-path", 
+                        type=Path, 
+                        default="onco_segmentations", 
+                        help="output directory")
+
+    parser.add_argument(
+        "--use-cropping",
+        action="store_true",
+        help="Enable ROI cropping based on TotalSegmentator (default: disabled).",
+        default=False,
+    )
+    
+    parser.add_argument(
+        "--no_postprocessing",
+        action="store_true",
+        help="Disable postprocessing",
+        default=False,
+    )
+
+    # Print help if no arguments are provided at all
+    if len(sys.argv) == 1:
+        parser.print_help(sys.stderr)
+        sys.exit(2)
+
+    args = parser.parse_args()
+    return args
 
 
 def run():
-    parser = build_parser()
-    args = parser.parse_args()
+    args = initialize_parser()
 
     # List all CT files under /input
     ct_folder = args.input_path
     if not ct_folder.exists():
-        raise FileNotFoundError(f"Input folder does not exist: {ct_folder}")
+        raise FileNotFoundError(f"Input does not exist: {ct_folder}")
     if not ct_folder.is_dir():
         raise NotADirectoryError(f"Input path is not a directory: {ct_folder}")
 
