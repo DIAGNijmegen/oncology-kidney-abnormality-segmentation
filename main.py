@@ -27,6 +27,7 @@ from kidney_abnormality_segmentation.segmentation.segment_ct_image import (
     segment_ct_image,
 )
 from kidney_abnormality_segmentation.utils import resample_volume, stem
+from kidney_abnormality_segmentation.config import CT_EXTENSIONS
 
 
 
@@ -132,19 +133,27 @@ def run():
     args = initialize_parser()
 
     # List all CT files under /input
-    ct_folder = args.input_path
-    if not ct_folder.exists():
-        raise FileNotFoundError(f"Input does not exist: {ct_folder}")
-    if not ct_folder.is_dir():
-        raise NotADirectoryError(f"Input path is not a directory: {ct_folder}")
+    input_path = args.input_path
+    if not input_path.exists():
+        raise FileNotFoundError(f"Input does not exist: {input_path}")
 
-    try:
-        all_cts = list(ct_folder.rglob("*.mha")) + list(ct_folder.rglob("*.nii.gz"))
-    except PermissionError as e:
-        raise PermissionError(f"Cannot access {args.input_path}: {e}") from e
+    if input_path.is_dir():
+        try:
+            patterns = ["*"+ext for ext in CT_EXTENSIONS]
+            all_cts = [
+                file
+                for pattern in patterns
+                for file in input_path.rglob(pattern)
+            ]
+        except PermissionError as e:
+            raise PermissionError(f"Cannot access {args.input_path}: {e}") from e
+    else:
+        if not any(str(input_path).endswith(ext) for ext in CT_EXTENSIONS):
+            raise ValueError(f"File type not support. Supported files are: {CT_EXTENSIONS}")
+        all_cts = [input_path]
 
     if not all_cts:
-        print(f"No CT files found under {ct_folder}")
+        print(f"No CT files found under {input_path}")
         sys.exit(1)
 
     print(f"[run] Found {len(all_cts)} input CTs to process")

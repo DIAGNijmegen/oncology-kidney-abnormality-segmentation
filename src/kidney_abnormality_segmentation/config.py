@@ -20,3 +20,6 @@ def default_output_path() -> Path:
 def default_model_path() -> Path:
     """Return default model path, allowing override via env var."""
     return Path(os.getenv("MODEL_PATH", DEFAULT_MODEL_PATH))
+
+
+CT_EXTENSIONS = (".mha", ".nii.gz", ".nii")
