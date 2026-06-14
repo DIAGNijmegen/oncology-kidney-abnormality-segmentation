@@ -1,4 +1,8 @@
-# Kidney Abnormality Segmentation model
+<h1 align="center">
+  <img src="./images/logo-renal-net.png" alt="Logo" width="50" style="vertical-align: middle; margin-right: 10px;" />
+  Renal-Net: Kidney Abnormality Segmentation Model
+</h1>
+
 
 This repository contains the code to setup the pipeline to run the Kidney Abnormality Segmentation model on CT scans. When you use this code base and the corresponding model weights, please cite our work: [kidney abnormality segmentation paper](https://doi.org/10.59275/j.melba.2026-67g5). The pipeline uses nnUNet [[1]](#1),[[2]](#2) and TotalSegmentator [[3]](#3), please also cite these works. 
 
@@ -36,7 +40,11 @@ When using a virtual or conda environment, you can either use the command line a
 You can kick-off the script with:
 
 ```bash
-renal-net --use-cropping (optional) --input-path (optional) --output-path(optional) --model-path (optional)
+renal-net  \
+-i --input-path <path> \
+-m --model-path <path>\
+-o --output-path (optional) <path> \
+--use-cropping (optional)
 ```
 Model path should point to the directory above `nnUNet_results`.
 
