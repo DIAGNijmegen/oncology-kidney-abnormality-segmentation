@@ -36,7 +36,7 @@ When using a virtual or conda environment, you can either use the command line a
 You can kick-off the script with:
 
 ```bash
-python main.py --use-cropping (optional) --input-path (optional) --output-path(optional) --model-path (optional)
+renal-net --use-cropping (optional) --input-path (optional) --output-path(optional) --model-path (optional)
 ```
 Model path should point to the directory above `nnUNet_results`.
 
