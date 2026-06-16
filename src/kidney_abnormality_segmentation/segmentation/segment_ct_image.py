@@ -25,7 +25,7 @@ from nnunetv2.inference.predict_from_raw_data import nnUNetPredictor
 from kidney_abnormality_segmentation.utils import resample_volume
 
 
-def segment_ct_image(input_ct, model_path: str) -> sitk.Image:
+def segment_ct_image(input_ct, model_path: str, run_fast: bool = False) -> sitk.Image:
     """
     input_ct: either a SimpleITK.Image or a string path to a .mha file
     model_path: base folder containing nnUNet_results/...
@@ -67,9 +67,9 @@ def segment_ct_image(input_ct, model_path: str) -> sitk.Image:
 
         # Instantiate the predictor
         predictor = nnUNetPredictor(
-            tile_step_size=0.5,
+            tile_step_size=0.5 if not run_fast else 0.8,
             use_gaussian=True,
-            use_mirroring=True,
+            use_mirroring=True if not run_fast else False,
             perform_everything_on_device=True,
             device=device,
             verbose=False,
@@ -87,7 +87,7 @@ def segment_ct_image(input_ct, model_path: str) -> sitk.Image:
         print(f"[nnUNet] Looking for trained model weights in: {weights_path}")
         predictor.initialize_from_trained_model_folder(
             model_training_output_dir=weights_path,
-            use_folds=(0, 1, 2, 3, 4),
+            use_folds=(0, 1, 2, 3, 4) if not run_fast else (0,),
             checkpoint_name="checkpoint_best.pth",
         )
         print("[nnUNet] Model loaded successfully.")

@@ -102,6 +102,13 @@ def initialize_parser() -> argparse.Namespace:
         default=False,
     )
 
+    parser.add_argument(
+        "--fast",
+        action="store_true",
+        help="Enable faster segmentations. Useful for experimentation and debugging (default: disabled).",
+        default=False,
+    )
+
     # Print help if no arguments are provided at all
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
@@ -150,9 +157,10 @@ def main():
         sys.exit(1)
 
     print(f"[main] Found {len(all_cts)} input CTs to process")
-
+    if args.fast:
+        print("[main] Running segmentation in fast mode.")
     from kidney_abnormality_segmentation.inference import run
-    run(all_cts, args.model_path, args.output_path, args.use_cropping)
+    run(all_cts, args.model_path, args.output_path, args.use_cropping, args.fast)
 
     
 if __name__ == "__main__":

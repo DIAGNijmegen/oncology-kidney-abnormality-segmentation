@@ -103,7 +103,7 @@ def test_pipeline_no_crop(ct_path, img_id, tmp_path, extra):
     output_dir = tmp_path / "no_crop"
     output_dir.mkdir()
     inference.run(all_cts=[ct_path], model_path=MODEL_PATH,
-                  output_path=output_dir, crop_roi=False)
+                  output_path=output_dir, crop_roi=False, run_fast=True)
 
     output_file = _get_output_path(output_dir, ct_path)
     _save_and_attach(extra, ct_path, output_file, f"{img_id}_no_crop")
@@ -119,7 +119,7 @@ def test_pipeline_crop(ct_path, img_id, tmp_path, extra):
     output_dir = tmp_path / "crop"
     output_dir.mkdir()
     inference.run(all_cts=[ct_path], model_path=MODEL_PATH,
-                  output_path=output_dir, crop_roi=True)
+                  output_path=output_dir, crop_roi=True, run_fast=True)
 
     output_file = _get_output_path(output_dir, ct_path)
     _save_and_attach(extra, ct_path, output_file, f"{img_id}_crop")
