@@ -16,11 +16,12 @@ dependencies = [
   "torch==2.2.2",
   "nnunetv2==2.4.2",
   "blosc2",
-  "acvl-utils==0.2"
+  "acvl-utils==0.2",
+  "batchgeneratorsv2"
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "ruff"]
+dev = ["pytest", "pytest-html", "ruff"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

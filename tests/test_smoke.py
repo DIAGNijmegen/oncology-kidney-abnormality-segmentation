@@ -9,12 +9,9 @@ Run with:
     pytest tests/test_smoke.py -v
 """
 
-import math
-import tempfile
 from pathlib import Path
 
 import numpy as np
-import pytest
 import SimpleITK as sitk
 
 # ---------------------------------------------------------------------------
