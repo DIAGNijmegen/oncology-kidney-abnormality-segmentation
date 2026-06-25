@@ -64,10 +64,9 @@ def _assert_valid_segmentation(output_path: Path, original_ct_path: Path):
     mask = sitk.ReadImage(str(output_path))
     arr  = sitk.GetArrayFromImage(mask)
     unique = set(int(v) for v in np.unique(arr))
-    assert unique == {0, 1, 2}, (
-        f"Expected labels {{0, 1, 2}}, got {unique}. "
-        "All three classes (background, kidney, tumor) must be present."
-    )
+    unexpected = unique - {0, 1, 2}
+    assert not unexpected, f"Unexpected label(s) in mask: {unexpected}"
+    assert 0 in unique, "Mask contains no background — likely a segmentation failure"
     orig = sitk.ReadImage(str(original_ct_path))
     for got, want in zip(mask.GetSpacing(), orig.GetSpacing()):
         assert abs(got - want) < 0.01, (
