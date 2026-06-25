@@ -14,7 +14,8 @@ dependencies = [
   "monai==1.4.0",
   "TotalSegmentator",
   "torch<2.9",
-  "nnunetv2==2.8"
+  "nnunetv2==2.8",
+  "dicom2nifti==2.5.1"
 ]
 
 [project.optional-dependencies]
