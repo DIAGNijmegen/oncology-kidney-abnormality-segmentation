@@ -56,7 +56,11 @@ def run(all_cts,  model_path: Path, output_path: Path, crop_roi: bool = False, r
         if crop_roi:
             print("[run] Cropping ROI; will read full CT into memory.")
             full_ct = SimpleITK.ReadImage(str(input_ct_image_path))
-            input_for_seg = extract_roi(full_ct)
+            try:
+                input_for_seg = extract_roi(full_ct)
+            except RuntimeError as e:
+                print(f"[run] ROI extraction failed ({e}), falling back to segmenting the full CT.")
+                input_for_seg = str(input_ct_image_path)
             # free the full CT
             del full_ct
             gc.collect()
