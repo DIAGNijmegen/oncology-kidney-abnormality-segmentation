@@ -3,7 +3,8 @@ Integration tests for Renal-Net — requires a real model and real CT images.
 
 Before running:
   1. cp tests/integration_config.py.example tests/integration_config.py
-  2. Fill in MODEL_PATH and TEST_CT_FILES
+  2. Fill in MODEL_PATH and TEST_CT_FILES (Test CT files *must* depict kidney and tumours, this is explictely tested)
+     (for exampled data at https://zenodo.org/records/20719257)
   3. pip install -e ".[dev]"
 
   make smoke   # fast, no model needed
@@ -66,7 +67,10 @@ def _assert_valid_segmentation(output_path: Path, original_ct_path: Path):
     unique = set(int(v) for v in np.unique(arr))
     unexpected = unique - {0, 1, 2}
     assert not unexpected, f"Unexpected label(s) in mask: {unexpected}"
-    assert 0 in unique, "Mask contains no background — likely a segmentation failure"
+    assert unique == {0, 1, 2}, (
+        f"Expected labels {{0, 1, 2}}, got {unique}. "
+        "All three classes (background, kidney, tumor) must be present."
+    )
     orig = sitk.ReadImage(str(original_ct_path))
     for got, want in zip(mask.GetSpacing(), orig.GetSpacing()):
         assert abs(got - want) < 0.01, (

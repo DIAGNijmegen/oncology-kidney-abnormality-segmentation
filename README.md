@@ -100,3 +100,14 @@ If you use Renal-Net for your research, please cite the [kidney abnormality segm
     url = "https://melba-journal.org/2026:012"
 }
 ```
+## Development
+Install the devolopment dependencies either with `make install-dev` or `pip install -e ".[dev]"`.
+Tests include fast smoke and extensive integration tests.
+To run integration tests you need to create a file `integration_config.py` in the test repo. You can find a template [here](tests/integration_config.example.py).
+The config file requires a path to the downloaded model weights and sample CT scans. These scans *must* depict kidney and renal masses for the tests to work. You may find some sample files [here](https://zenodo.org/records/20719257). After running the integration tests, segmentation previews are saved in a newly created `reports` directory.
+
+```bash
+make install-dev
+make smoke
+make full # requires model weights and sample images depicting renal masses
+```
