@@ -101,11 +101,11 @@ def initialize_parser() -> argparse.Namespace:
         help="Enable ROI cropping based on TotalSegmentator (default: disabled).",
         default=False,
     )
-    
+
     parser.add_argument(
-        "--no_postprocessing",
+        "--fast",
         action="store_true",
-        help="Disable postprocessing",
+        help="Enable faster segmentations. Useful for experimentation and debugging (default: disabled).",
         default=False,
     )
 
@@ -157,9 +157,10 @@ def main():
         sys.exit(1)
 
     print(f"[main] Found {len(all_cts)} input CTs to process")
-
+    if args.fast:
+        print("[main] Running segmentation in fast mode.")
     from kidney_abnormality_segmentation.inference import run
-    run(all_cts, args.model_path, args.output_path, args.use_cropping)
+    run(all_cts, args.model_path, args.output_path, args.use_cropping, args.fast)
 
     
 if __name__ == "__main__":

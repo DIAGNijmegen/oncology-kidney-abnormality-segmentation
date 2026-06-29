@@ -29,7 +29,7 @@ from kidney_abnormality_segmentation.segmentation.segment_ct_image import (
 from kidney_abnormality_segmentation.utils import resample_volume, stem
 
 
-def run(all_cts,  model_path: Path, output_path: Path, crop_roi: bool = False):
+def run(all_cts,  model_path: Path, output_path: Path, crop_roi: bool = False, run_fast:bool = False):
 
     for input_ct_image_path in all_cts:
         print(f"[run] Processing {input_ct_image_path.name}")
@@ -56,7 +56,11 @@ def run(all_cts,  model_path: Path, output_path: Path, crop_roi: bool = False):
         if crop_roi:
             print("[run] Cropping ROI; will read full CT into memory.")
             full_ct = SimpleITK.ReadImage(str(input_ct_image_path))
-            input_for_seg = extract_roi(full_ct)
+            try:
+                input_for_seg = extract_roi(full_ct)
+            except RuntimeError as e:
+                print(f"[run] ROI extraction failed ({e}), falling back to segmenting the full CT.")
+                input_for_seg = str(input_ct_image_path)
             # free the full CT
             del full_ct
             gc.collect()
@@ -68,7 +72,7 @@ def run(all_cts,  model_path: Path, output_path: Path, crop_roi: bool = False):
 
         # 4) Segment (this now never loads the full on-disk CT into RAM)
         print("[run] Calling segment_ct_image() …")
-        segmentation_sitk = segment_ct_image(input_for_seg, str(model_path))
+        segmentation_sitk = segment_ct_image(input_for_seg, str(model_path), run_fast=run_fast)
 
         # 5) Free any remaining cropped image if it was in RAM
         if isinstance(input_for_seg, SimpleITK.Image):

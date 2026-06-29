@@ -163,17 +163,17 @@ def combine_masks(kidney_mask: sitk.Image, tumor_mask: sitk.Image) -> sitk.Image
     Returns:
         sitk.Image: Combined mask where kidneys have label 1 and tumors have label 2.
     """
-    # Ensure masks are binary and have non-overlapping regions
-    kidney_mask = sitk.Cast(kidney_mask > 0, sitk.sitkUInt8) * 1  # Label kidneys as 1
-    tumor_mask = sitk.Cast(tumor_mask > 0, sitk.sitkUInt8) * 2  # Label tumors as 2
+    kidney_binary = sitk.Cast(kidney_mask > 0, sitk.sitkUInt8)
+    tumor_binary = sitk.Cast(tumor_mask > 0, sitk.sitkUInt8)
 
-    # Combine masks (assuming non-overlapping)
-    combined_mask = sitk.Add(kidney_mask, tumor_mask)
+    # Tuor wins on overlap: exclude kidney voxels where tumor is present
+    kidney_only = sitk.And(kidney_binary, sitk.Not(tumor_binary))
 
     # Resolve any overlapping regions (if necessary, prioritize higher label)
-    combined_mask = sitk.Maximum(combined_mask, tumor_mask)
+    kidney_labeled = sitk.Cast(kidney_only, sitk.sitkUInt8) # Kidney label is 1
+    tumor_labeled = sitk.Cast(tumor_binary, sitk.sitkUInt8) * 2  # Tumor label is 2
 
-    return combined_mask
+    return sitk.Add(kidney_labeled, tumor_labeled)
 
 
 def get_largest_cc(

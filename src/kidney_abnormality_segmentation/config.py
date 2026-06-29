@@ -8,4 +8,4 @@ def ensure_totalsegmentator_env():
         os.environ.setdefault(var, default)
 
 
-CT_EXTENSIONS = (".mha", ".nii.gz", ".nii")
+CT_EXTENSIONS = [".nii.gz", ".nii", ".mha"]

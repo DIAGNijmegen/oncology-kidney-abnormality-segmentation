@@ -75,7 +75,24 @@ def extract_roi(ct_image: sitk.Image) -> sitk.Image:
         stats = sitk.LabelShapeStatisticsImageFilter()
         stats.Execute(lowres_mask)
 
-        labels_of_interest = [11, 14, 21]  # same IDs as “lung_lower_lobe_left=11”, etc.
+        lung_labels = {11, 14}   # lung_lower_lobe_right=11, lung_lower_lobe_left=14
+        bladder_label = 21       # urinary_bladder=21
+        labels_of_interest = list(lung_labels | {bladder_label})
+
+        found_labels = {lbl for lbl in labels_of_interest if stats.HasLabel(lbl)}
+        has_lung = bool(found_labels & lung_labels)
+        has_bladder = bladder_label in found_labels
+
+        if not has_lung or not has_bladder:
+            missing = []
+            if not has_lung:
+                missing.append("lung lower lobes")
+            if not has_bladder:
+                missing.append("urinary bladder")
+            raise RuntimeError(
+                f"ROI crop requires lung lower lobes and bladder to bound the kidney region; "
+                f"missing: {', '.join(missing)}"
+            )
 
         # Initialize extreme indices in low-res index space:
         min_idx_low = [
@@ -85,10 +102,7 @@ def extract_roi(ct_image: sitk.Image) -> sitk.Image:
         ]
         max_idx_low = [0, 0, 0]
 
-        for lbl in labels_of_interest:
-            if not stats.HasLabel(lbl):
-                continue
-
+        for lbl in found_labels:
             # GetBoundingBox returns (startX, startY, startZ, sizeX, sizeY, sizeZ).
             bb = stats.GetBoundingBox(lbl)
             sx, sy, sz, dx, dy, dz = bb
@@ -151,9 +165,4 @@ def extract_roi(ct_image: sitk.Image) -> sitk.Image:
         return cropped_image
 
     except Exception as e:
-        print(
-            "An error occurred during ROI extraction:",
-            e,
-            "\nAborting execution of the algorithm.",
-        )
-        sys.exit(1)
+        raise RuntimeError(f"An error occurred during ROI extraction: {e}") from e

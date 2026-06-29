@@ -13,14 +13,13 @@ authors = [{name = "Sarah de Boer"}]
 dependencies = [
   "monai==1.4.0",
   "TotalSegmentator",
-  "torch==2.2.2",
-  "nnunetv2==2.4.2",
-  "blosc2",
-  "acvl-utils==0.2"
+  "torch<2.9",
+  "nnunetv2==2.8",
+  "dicom2nifti==2.5.1"
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "ruff"]
+dev = ["pytest", "pytest-html", "ruff"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

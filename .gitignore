@@ -2,3 +2,7 @@
 *.pyc
 *.egg-info
 *.DS_Store
+
+# Tests
+tests/integration_config.py
+reports/

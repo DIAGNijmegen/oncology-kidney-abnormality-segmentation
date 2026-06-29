@@ -103,10 +103,6 @@ def crop_image(
     cropped_image = sitk.RegionOfInterest(input_image, size=size, index=index)
     return cropped_image
 
-
-connectivity_structure = ndi.generate_binary_structure(3, 3)
-
-
 def convert_numpy_to_python(obj):
     """
     Convert numpy objects to native Python data types for JSON serialization.
