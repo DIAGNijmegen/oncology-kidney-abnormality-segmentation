@@ -3,8 +3,8 @@ Integration tests for Renal-Net — requires a real model and real CT images.
 
 Before running:
   1. cp tests/integration_config.py.example tests/integration_config.py
-  2. Fill in MODEL_PATH and TEST_CT_FILES (Test CT files *must* depict kidney and tumours, this is explictely tested)
-     (for exampled data at https://zenodo.org/records/20719257)
+  2. Fill in MODEL_PATH and TEST_CT_FILES (Test CT files *must* depict kidney and tumours, this is explicitly tested)
+     (for example data at https://zenodo.org/records/20719257)
   3. pip install -e ".[dev]"
 
   make smoke   # fast, no model needed
