@@ -144,6 +144,7 @@ def main():
                 file
                 for pattern in patterns
                 for file in input_path.rglob(pattern)
+                if not file.name.startswith(".")
             ]
         except PermissionError as e:
             raise PermissionError(f"Cannot access {args.input_path}: {e}") from e
