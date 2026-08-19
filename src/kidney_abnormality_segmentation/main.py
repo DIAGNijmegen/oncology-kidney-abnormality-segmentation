@@ -14,10 +14,9 @@
 
 import argparse
 import sys
-
 from pathlib import Path
-from kidney_abnormality_segmentation.config import CT_EXTENSIONS
 
+from kidney_abnormality_segmentation.config import CT_EXTENSIONS
 
 
 class TermStyle:
@@ -109,6 +108,24 @@ def initialize_parser() -> argparse.Namespace:
         default=False,
     )
 
+    parser.add_argument(
+            "--one-fold",
+            action="store_true",
+            help="Use only one fold for segmentation (default: disabled).",
+            default=False,
+        )
+
+    parser.add_argument(
+        "--sw-batch-size",
+        type=int,
+        default=4,
+        help="Number of sliding-window patches to batch together per GPU forward pass "
+             "during inference (default: 4). Higher values improve GPU utilization at "
+             "the cost of more GPU memory. Note: with mirroring enabled (i.e. unless "
+             "--fast is set), the effective network batch is up to 8x this value, since "
+             "all TTA mirror variants are also batched into the same forward pass.",
+    )
+
     # Print help if no arguments are provided at all
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
@@ -161,7 +178,15 @@ def main():
     if args.fast:
         print("[main] Running segmentation in fast mode.")
     from kidney_abnormality_segmentation.inference import run
-    run(all_cts, args.model_path, args.output_path, args.use_cropping, args.fast)
+    run(
+        all_cts,
+        args.model_path,
+        args.output_path,
+        crop_roi=args.use_cropping,
+        run_fast=args.fast,
+        run_one_fold=args.one_fold,
+        sw_batch_size=args.sw_batch_size,
+    )
 
     
 if __name__ == "__main__":

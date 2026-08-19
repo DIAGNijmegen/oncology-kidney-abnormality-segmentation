@@ -322,6 +322,30 @@ class TestIdempotency:
 
 
 # ---------------------------------------------------------------------------
+# 8b. main — CLI argument parsing (--sw-batch-size)
+# ---------------------------------------------------------------------------
+
+class TestSwBatchSizeArg:
+    """--sw-batch-size CLI flag: default value and custom parsing."""
+
+    def test_default_value(self, monkeypatch, tmp_path):
+        import sys
+        from kidney_abnormality_segmentation.main import initialize_parser
+        monkeypatch.setattr(sys, "argv", ["renal-net", "-i", str(tmp_path), "-m", str(tmp_path)])
+        args = initialize_parser()
+        assert args.sw_batch_size == 4
+
+    def test_custom_value(self, monkeypatch, tmp_path):
+        import sys
+        from kidney_abnormality_segmentation.main import initialize_parser
+        monkeypatch.setattr(sys, "argv",
+                             ["renal-net", "-i", str(tmp_path), "-m", str(tmp_path),
+                              "--sw-batch-size", "8"])
+        args = initialize_parser()
+        assert args.sw_batch_size == 8
+
+
+# ---------------------------------------------------------------------------
 # 9. postprocessing — small tumor removal (size threshold)
 # ---------------------------------------------------------------------------
 

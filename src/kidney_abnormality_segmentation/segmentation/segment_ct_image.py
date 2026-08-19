@@ -17,15 +17,71 @@ import os
 import shutil
 import sys
 import tempfile
+import threading
 
 import SimpleITK as sitk
 import torch
-from nnunetv2.inference.predict_from_raw_data import nnUNetPredictor
 
+from kidney_abnormality_segmentation.segmentation.batched_predictor import (
+    BatchedNNUNetPredictor,
+)
 from kidney_abnormality_segmentation.utils import resample_volume
 
+# ---- Load model and store it in cache ---
+_lock = threading.Lock()  # guard for multi-threading
+_cached_model = None
+_cached_model_path = None
 
-def segment_ct_image(input_ct, model_path: str, run_fast: bool = False) -> sitk.Image:
+
+def get_predictor(model_path, run_fast: bool = False, run_one_fold: bool = False,
+                   sw_batch_size: int = 4) -> BatchedNNUNetPredictor:
+    """
+    Return a cached nnUNet predictor, reloading it only if the weights path changes to avoid repeated loading time.
+    """
+
+    global _cached_model, _cached_model_path
+
+    with _lock:
+        if _cached_model is None or _cached_model_path != model_path:
+
+            _cached_model_path = model_path
+            _cached_model = BatchedNNUNetPredictor(
+                sw_batch_size=sw_batch_size,
+                tile_step_size=0.5 if not run_fast else 0.8,
+                use_gaussian=True,
+                use_mirroring=True if not run_fast else False,
+                perform_everything_on_device=True,
+                device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+                verbose=False,
+                verbose_preprocessing=False,
+                allow_tqdm=True,
+            )
+
+            # Load the trained model weights
+            weights_path = os.path.join(
+                model_path,
+                "nnUNet_results",
+                "Dataset102_KidneyCT",
+                "nnUNetTrainer__nnUNetResEncUNetLPlans__3d_fullres",
+            )
+            print(f"[nnUNet] Looking for trained model weights in: {weights_path}")
+            _cached_model.initialize_from_trained_model_folder(
+                model_training_output_dir=weights_path,
+                use_folds=(0, 1, 2, 3, 4) if not (run_fast or run_one_fold) else (0,),
+                checkpoint_name="checkpoint_best.pth",
+            )
+            print("[nnUNet] Model loaded successfully.")
+
+        # sw_batch_size is cheap to update without reloading weights, so keep it in sync
+        # even when the cached predictor is reused.
+        _cached_model.sw_batch_size = sw_batch_size
+
+    return _cached_model
+
+
+
+def segment_ct_image(input_ct, model_path: str, run_fast: bool = False, run_one_fold: bool = False,
+                      sw_batch_size: int = 4) -> sitk.Image:
     """
     input_ct: either a SimpleITK.Image or a string path to a .mha file
     model_path: base folder containing nnUNet_results/...
@@ -63,34 +119,9 @@ def segment_ct_image(input_ct, model_path: str, run_fast: bool = False) -> sitk.
                 "segment_ct_image: input_ct must be sitk.Image or filepath"
             )
 
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-        # Instantiate the predictor
-        predictor = nnUNetPredictor(
-            tile_step_size=0.5 if not run_fast else 0.8,
-            use_gaussian=True,
-            use_mirroring=True if not run_fast else False,
-            perform_everything_on_device=True,
-            device=device,
-            verbose=False,
-            verbose_preprocessing=False,
-            allow_tqdm=True,
-        )
-
-        # Load the trained model weights
-        weights_path = os.path.join(
-            model_path,
-            "nnUNet_results",
-            "Dataset102_KidneyCT",
-            "nnUNetTrainer__nnUNetResEncUNetLPlans__3d_fullres",
-        )
-        print(f"[nnUNet] Looking for trained model weights in: {weights_path}")
-        predictor.initialize_from_trained_model_folder(
-            model_training_output_dir=weights_path,
-            use_folds=(0, 1, 2, 3, 4) if not run_fast else (0,),
-            checkpoint_name="checkpoint_best.pth",
-        )
-        print("[nnUNet] Model loaded successfully.")
+        # Load predictor
+        predictor = get_predictor(model_path, run_fast=run_fast, run_one_fold=run_one_fold,
+                                   sw_batch_size=sw_batch_size)
 
         # Create a temporary directory under /tmp for nnU-Net’s outputs
         tmp_output_dir = tempfile.mkdtemp(dir="/tmp")
