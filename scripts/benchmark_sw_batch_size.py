@@ -64,6 +64,7 @@ def main():
     print("Loading model (one fold; architecture/memory footprint is the same across folds)...")
     predictor = get_predictor(args.model_path, run_fast=args.fast, run_one_fold=True, sw_batch_size=1)
 
+    predictor.network = predictor.network.to(predictor.device)
     patch_size = predictor.configuration_manager.patch_size
     num_input_channels = get_num_input_channels(predictor.network)
     mirror_variants = 2 ** len(predictor.allowed_mirroring_axes) if predictor.use_mirroring else 1
