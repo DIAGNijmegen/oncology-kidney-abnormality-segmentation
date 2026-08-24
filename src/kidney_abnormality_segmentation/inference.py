@@ -28,7 +28,7 @@ from kidney_abnormality_segmentation.preprocessing.extract_roi import extract_ro
 from kidney_abnormality_segmentation.segmentation.segment_ct_image import (
     segment_ct_image,
 )
-from kidney_abnormality_segmentation.utils import resample_volume, stem
+from kidney_abnormality_segmentation.utils import load_image_metadata, resample_volume, stem
 
 
 def run(all_cts,  model_path: Path, output_path: Path, crop_roi: bool = False, run_fast:bool = False, run_one_fold: bool = False, sw_batch_size: int = 4, input_root: Path | None = None) -> int:
@@ -58,7 +58,7 @@ def run(all_cts,  model_path: Path, output_path: Path, crop_roi: bool = False, r
         # 3) Decide what to hand to segment_ct_image:
         #    - If cropping: read into memory, crop, then pass the cropped SITK.Image.
         #    - If no cropping: NEVER read the full CT. Pass the filepath string instead.
-        orig_spacing = SimpleITK.ReadImage(str(input_ct_image_path)).GetSpacing()
+        orig_metadata = load_image_metadata(str(input_ct_image_path))
         if crop_roi:
             print("[run] Cropping ROI; will read full CT into memory.")
             full_ct = SimpleITK.ReadImage(str(input_ct_image_path))
@@ -87,10 +87,14 @@ def run(all_cts,  model_path: Path, output_path: Path, crop_roi: bool = False, r
 
         # 6) Postprocess & write out
         post_sitk = postprocess_segmentation_mask(segmentation_sitk)
+        reference_image = SimpleITK.Image(orig_metadata["size"], post_sitk.GetPixelID())
+        reference_image.SetSpacing(orig_metadata["spacing"])
+        reference_image.SetOrigin(orig_metadata["origin"])
+        reference_image.SetDirection(orig_metadata["direction"])
         final_image = resample_volume(
             post_sitk,
-            new_spacing=orig_spacing,
             interpolator=SimpleITK.sitkNearestNeighbor,
+            reference_image=reference_image,
         )
         print(f"[run] Writing final mask to: {out_path}")
 

@@ -31,7 +31,20 @@ def stem(filename: str, extensions: list = [".nii", ".nii.gz", ".mha"]):
     return filename.split("/")[-1]
 
 
-def resample_volume(image, new_spacing=(1.0, 1.0, 1.0), interpolator=sitk.sitkLinear):
+def resample_volume(image, new_spacing=(1.0, 1.0, 1.0), interpolator=sitk.sitkLinear, reference_image=None):
+    """Resample image to new_spacing, or onto reference_image's exact grid if given.
+
+    reference_image, when provided, guarantees the output size/origin/direction match it
+    exactly -- new_spacing is ignored in that case. Without it, output size is computed
+    from the spacing ratio (int(round(...))), which can drift by a voxel due to rounding.
+    """
+    resample = sitk.ResampleImageFilter()
+    resample.SetInterpolator(interpolator)
+
+    if reference_image is not None:
+        resample.SetReferenceImage(reference_image)
+        return resample.Execute(image)
+
     original_spacing = image.GetSpacing()
     original_size = image.GetSize()
 
@@ -40,8 +53,6 @@ def resample_volume(image, new_spacing=(1.0, 1.0, 1.0), interpolator=sitk.sitkLi
         for osz, ospc, nspc in zip(original_size, original_spacing, new_spacing)
     ]
 
-    resample = sitk.ResampleImageFilter()
-    resample.SetInterpolator(interpolator)
     resample.SetOutputSpacing(new_spacing)
     resample.SetSize(new_size)
     resample.SetOutputOrigin(image.GetOrigin())
