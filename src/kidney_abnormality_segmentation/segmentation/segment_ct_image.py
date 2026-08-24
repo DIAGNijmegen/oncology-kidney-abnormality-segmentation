@@ -18,6 +18,7 @@ import shutil
 import sys
 import tempfile
 import threading
+import time
 
 import SimpleITK as sitk
 import torch
@@ -98,6 +99,7 @@ def segment_ct_image(input_ct, model_path: str, run_fast: bool = False, run_one_
     os.environ["NNUNET_NUM_PROCESSORS"] = "2"
 
     try:
+        t_resample_start = time.perf_counter()
         if isinstance(input_ct, sitk.Image):
             with tempfile.NamedTemporaryFile(
                 suffix=".mha", delete=False, dir="/tmp"
@@ -111,13 +113,14 @@ def segment_ct_image(input_ct, model_path: str, run_fast: bool = False, run_one_
             ct = resample_volume(ct, new_spacing=(0.75, 0.75, 0.75))
 
             # Make sure the tempname is longer than 5 characters (weird nnUNet quirk)
-            temp_name =  "tempimage_" + os.path.basename(input_ct) 
+            temp_name =  "tempimage_" + os.path.basename(input_ct)
             tmp_input = os.path.join("/tmp", temp_name)
             sitk.WriteImage(ct, tmp_input)
         else:
             raise ValueError(
                 "segment_ct_image: input_ct must be sitk.Image or filepath"
             )
+        print(f"[timing] read + resample to 0.75mm + write tmp file: {time.perf_counter() - t_resample_start:.2f}s")
 
         # Load predictor
         predictor = get_predictor(model_path, run_fast=run_fast, run_one_fold=run_one_fold,
@@ -128,12 +131,15 @@ def segment_ct_image(input_ct, model_path: str, run_fast: bool = False, run_one_
 
         # Run inference. Because we give an existing folder as output, nnU-Net writes a .nii.gz into it.
         print(f"[nnUNet] Running inference on: {tmp_input}")
+        t_predict_start = time.perf_counter()
         result_list = predictor.predict_from_files(
             list_of_lists_or_source_folder=[[tmp_input]],
             output_folder_or_list_of_truncated_output_files=tmp_output_dir,
             num_processes_preprocessing=1,
             num_processes_segmentation_export=1,
         )
+        print(f"[timing] predict_from_files total (preprocess+infer+export): "
+              f"{time.perf_counter() - t_predict_start:.2f}s")
 
         # result_list should be something like ["/tmp/tmpXYZ/CaseName_seg.nii.gz"]
         seg_path = None

@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 import itertools
+import time
 
 import torch
 from nnunetv2.inference.predict_from_raw_data import nnUNetPredictor
@@ -87,6 +88,7 @@ class BatchedNNUNetPredictor(nnUNetPredictor):
     ) -> torch.Tensor:
         predicted_logits = n_predictions = prediction = gaussian = workon = None
         results_device = self.device if do_on_device else torch.device('cpu')
+        t_start = time.perf_counter()
 
         try:
             empty_cache(self.device)
@@ -124,6 +126,7 @@ class BatchedNNUNetPredictor(nnUNetPredictor):
                     'reduce value_scaling_factor in compute_gaussian or increase the dtype of '
                     'predicted_logits to fp32'
                 )
+            print(f"[timing] sliding-window inference (this fold): {time.perf_counter() - t_start:.2f}s")
             return predicted_logits
         except Exception:
             del predicted_logits, n_predictions, prediction, gaussian, workon
