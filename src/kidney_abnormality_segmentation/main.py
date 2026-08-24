@@ -116,6 +116,15 @@ def initialize_parser() -> argparse.Namespace:
         )
 
     parser.add_argument(
+        "--preserve-relative-paths",
+        action="store_true",
+        help="Mirror each input CT's path relative to --input-path under --output-path "
+             "(e.g. patient_id/study_uid/phase.mha), instead of writing all outputs flat "
+             "into --output-path (default: disabled).",
+        default=False,
+    )
+
+    parser.add_argument(
         "--sw-batch-size",
         type=int,
         default=4,
@@ -186,6 +195,7 @@ def main():
         run_fast=args.fast,
         run_one_fold=args.one_fold,
         sw_batch_size=args.sw_batch_size,
+        input_root=input_path if args.preserve_relative_paths else None,
     )
 
     

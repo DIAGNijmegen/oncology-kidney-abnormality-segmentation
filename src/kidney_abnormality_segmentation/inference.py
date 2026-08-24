@@ -31,7 +31,7 @@ from kidney_abnormality_segmentation.segmentation.segment_ct_image import (
 from kidney_abnormality_segmentation.utils import resample_volume, stem
 
 
-def run(all_cts,  model_path: Path, output_path: Path, crop_roi: bool = False, run_fast:bool = False, run_one_fold: bool = False, sw_batch_size: int = 4) -> int:
+def run(all_cts,  model_path: Path, output_path: Path, crop_roi: bool = False, run_fast:bool = False, run_one_fold: bool = False, sw_batch_size: int = 4, input_root: Path | None = None) -> int:
 
     for input_ct_image_path in all_cts:
         print(f"[run] Processing {input_ct_image_path.name}")
@@ -42,7 +42,11 @@ def run(all_cts,  model_path: Path, output_path: Path, crop_roi: bool = False, r
         file_extension = (
             ".mha" if str(input_ct_image_path).endswith(".mha") else ".nii.gz"
         )
-        out_folder = output_path
+        if input_root is not None:
+            out_folder = output_path / input_ct_image_path.relative_to(input_root).parent
+        else:
+            out_folder = output_path
+        out_folder.mkdir(parents=True, exist_ok=True)
 
         # find output
         out_path = out_folder / f"{image_name}{file_extension}"
