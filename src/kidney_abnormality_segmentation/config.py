@@ -8,4 +8,6 @@ def ensure_totalsegmentator_env():
         os.environ.setdefault(var, default)
 
 
-CT_EXTENSIONS = [".nii.gz", ".nii", ".mha"]
+EXTENSIONS = [".nii.gz", ".nii", ".mha"]
+CT_MODEL_PATH = Path("nnUNet_results/Dataset102_KidneyCT/nnUNetTrainer__nnUNetResEncUNetLPlans__3d_fullres")
+MRI_MODEL_PATH = Path("nnUNet_results/Dataset103_KidneyMRI/nnUNetTrainer__nnUNetResEncUNetLPlans__3d_fullres")

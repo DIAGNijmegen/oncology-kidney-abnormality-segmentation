@@ -16,7 +16,7 @@ import argparse
 import sys
 
 from pathlib import Path
-from kidney_abnormality_segmentation.config import CT_EXTENSIONS
+from kidney_abnormality_segmentation.config import EXTENSIONS, CT_MODEL_PATH, MRI_MODEL_PATH
 
 
 
@@ -86,7 +86,7 @@ def initialize_parser() -> argparse.Namespace:
         "--model-path",
         type=Path,
         required=True,
-        help="path to the model weights",
+        help="path to the base nnUnet directory containing model weights",
     )
 
     parser.add_argument("-o",
@@ -109,6 +109,20 @@ def initialize_parser() -> argparse.Namespace:
         default=False,
     )
 
+    parser.add_argument(
+        "--mri",
+        action="store_true",
+        help="Enable MRI segmentation (default: disabled).",
+        default=False,
+    )
+
+    parser.add_argument(
+        "--presample",
+        action="store_true",
+        help="Resample input images to 0.75mm isotropic spacing before inference (default: disabled). This resolves memory issues specifically on the Grand Challenge platform.",
+        default=False,
+    )
+
     # Print help if no arguments are provided at all
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
@@ -128,9 +142,19 @@ def main():
 
     # Check model path
     if not args.model_path.exists():
-        raise FileNotFoundError(f"Model path does not exist: {input_path}")
-    if not (args.model_path / "nnUNet_results").exists():
-        raise FileNotFoundError("Model path does not include nnUNet_results folder")
+        raise FileNotFoundError(f"Model base path does not exist: {input_path}")
+
+    # Check weights path
+    if args.mri:
+        weights_path = args.model_path / MRI_MODEL_PATH
+        if not weights_path.exists():
+            raise FileNotFoundError(f"Model base path does not include the required MRI model folder: {MRI_MODEL_PATH}",
+                                    "Weights will soon be made available.")
+    else:
+        weights_path = args.model_path / CT_MODEL_PATH
+        if not weights_path.exists():
+            raise FileNotFoundError(f"Model base path does not include the required CT model folder: {CT_MODEL_PATH}",
+                                    "Weights are available at: https://doi.org/10.5281/zenodo.15315330")
 
     # Output path
     if not args.output_path.exists():
@@ -139,7 +163,7 @@ def main():
     # Read files
     if input_path.is_dir():
         try:
-            patterns = ["*"+ext for ext in CT_EXTENSIONS]
+            patterns = ["*"+ext for ext in EXTENSIONS]
             all_cts = [
                 file
                 for pattern in patterns
@@ -149,8 +173,8 @@ def main():
         except PermissionError as e:
             raise PermissionError(f"Cannot access {args.input_path}: {e}") from e
     else:
-        if not any(str(input_path).endswith(ext) for ext in CT_EXTENSIONS):
-            raise ValueError(f"File type not support. Supported files are: {CT_EXTENSIONS}")
+        if not any(str(input_path).endswith(ext) for ext in EXTENSIONS):
+            raise ValueError(f"File type not support. Supported files are: {EXTENSIONS}")
         all_cts = [input_path]
 
     if not all_cts:
@@ -160,8 +184,9 @@ def main():
     print(f"[main] Found {len(all_cts)} input CTs to process")
     if args.fast:
         print("[main] Running segmentation in fast mode.")
-    from kidney_abnormality_segmentation.inference import run
-    run(all_cts, args.model_path, args.output_path, args.use_cropping, args.fast)
+
+    from kidney_abnormality_segmentation.inference import run  
+    run(all_cts, weights_path, args.output_path, args.use_cropping, args.fast, args.mri, presample=args.presample)
 
     
 if __name__ == "__main__":

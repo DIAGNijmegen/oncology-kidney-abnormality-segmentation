@@ -12,126 +12,118 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import glob
 import os
-import shutil
-import sys
 import tempfile
 
 import SimpleITK as sitk
 import torch
 from nnunetv2.inference.predict_from_raw_data import nnUNetPredictor
 
+from kidney_abnormality_segmentation.config import EXTENSIONS
 from kidney_abnormality_segmentation.utils import resample_volume
 
 
-def segment_ct_image(input_ct, model_path: str, run_fast: bool = False) -> sitk.Image:
+def segment_image(input_image, weights_path: str, run_fast: bool = False, presample: bool = False, supported_folds = (0, 1, 2, 3, 4)) -> sitk.Image:
     """
-    input_ct: either a SimpleITK.Image or a string path to a .mha file
-    model_path: base folder containing nnUNet_results/...
+    input_image: either a SimpleITK.Image or a string path to a .mha file
+    weights_path: path to the directory containing the trained model weights
+    run_fast: use a faster but less accurate inference mode
+    presample: resample the input image to 0.75mm isotropic spacing before inference 
+        (this resolves memory issues specifically on the Grand Challenge platform)
+    supported_folds: tuple of fold indices to use for inference (default is all folds 0-4)
+        (for MRI this needs to be (all,))
 
-    Runs nnU-Net on a CT by:
-      1. Writing the CT to /tmp as a .mha
-      2. Calling nnUNetPredictor.predict_from_files(...) with a temporary output folder
-      3. If predict_from_files() returns [None], we scan that folder for a .nii/.nii.gz
-      4. Read the resulting segmentation back into SimpleITK and clean up.
+    Behaviour:
+      - path input, presample=False  -> file is used directly, untouched
+      - path input, presample=True   -> resampled copy written to a temp dir
+      - sitk.Image input             -> written to a temp dir (resampled only if presample)
+
+    Everything this function creates lives inside a single TemporaryDirectory that is
+    removed automatically on exit. 
     """
     # limit threads…
     os.environ["OMP_NUM_THREADS"] = "1"
     os.environ["MKL_NUM_THREADS"] = "1"
     os.environ["NNUNET_NUM_PROCESSORS"] = "2"
 
-    try:
-        if isinstance(input_ct, sitk.Image):
-            with tempfile.NamedTemporaryFile(
-                suffix=".mha", delete=False, dir="/tmp"
-            ) as tmp_in:
-                ct = resample_volume(input_ct, new_spacing=(0.75, 0.75, 0.75))
-                sitk.WriteImage(ct, tmp_in.name)
-                tmp_input = tmp_in.name
-        elif isinstance(input_ct, str):
-            # copy to /tmp to guarantee write-perms / uniform path
-            ct = sitk.ReadImage(input_ct)
-            ct = resample_volume(ct, new_spacing=(0.75, 0.75, 0.75))
+    new_spacing = (0.75, 0.75, 0.75)
+    CASE_STEM = "renalnet_case"
+    CASE_NAME = CASE_STEM + "_0000" # add a suffic of size 5, will be removed by the nnUnet predictor later (nnU-Net quirk)
 
-            # Make sure the tempname is longer than 5 characters (weird nnUNet quirk)
-            temp_name =  "tempimage_" + os.path.basename(input_ct) 
-            tmp_input = os.path.join("/tmp", temp_name)
-            sitk.WriteImage(ct, tmp_input)
-        else:
-            raise ValueError(
-                "segment_ct_image: input_ct must be sitk.Image or filepath"
+    try:
+        with tempfile.TemporaryDirectory(dir="/tmp") as tmp_dir:
+            in_dir = os.path.join(tmp_dir, "RenalNet_in")
+            out_dir = os.path.join(tmp_dir, "RenalNet_out")
+            os.makedirs(in_dir)
+            os.makedirs(out_dir)
+
+            # --- Resolve the input to a single path on disk -------------------
+            if isinstance(input_image, sitk.Image):
+                image = resample_volume(input_image, new_spacing=new_spacing) if presample else input_image
+                tmp_input = os.path.join(in_dir, CASE_NAME + ".mha")
+                sitk.WriteImage(image, tmp_input)
+
+            elif isinstance(input_image, str):
+                ext = next((e for e in EXTENSIONS if input_image.endswith(e)), os.path.splitext(input_image)[1])
+                tmp_input = os.path.join(in_dir, CASE_NAME + ext)
+                if presample:
+                    sitk.WriteImage(resample_volume(sitk.ReadImage(input_image), new_spacing=new_spacing), tmp_input)
+                else:
+                    # symlink: required to counter the nnU-Net quirk of truncating names
+                    # no copy, and rmtree removes only the link, never the target
+                    os.symlink(os.path.abspath(input_image), tmp_input)
+            else:
+                raise TypeError("segment_image: input_image must be sitk.Image or filepath")
+
+            # --- Predictor ----------------------------------------------------
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+            predictor = nnUNetPredictor(
+                tile_step_size=0.5 if not run_fast else 0.8,
+                use_gaussian=True,
+                use_mirroring= not run_fast,
+                perform_everything_on_device=True,
+                device=device,
+                verbose=False,
+                verbose_preprocessing=False,
+                allow_tqdm=True,
             )
 
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            print(f"[nnUNet] Looking for trained model weights in: {weights_path}")
+            predictor.initialize_from_trained_model_folder(
+                model_training_output_dir=weights_path,
+                use_folds= supported_folds if not run_fast else (supported_folds[0],),
+                checkpoint_name="checkpoint_best.pth",
+            )
+            print("[nnUNet] Model loaded successfully.")
 
-        # Instantiate the predictor
-        predictor = nnUNetPredictor(
-            tile_step_size=0.5 if not run_fast else 0.8,
-            use_gaussian=True,
-            use_mirroring=True if not run_fast else False,
-            perform_everything_on_device=True,
-            device=device,
-            verbose=False,
-            verbose_preprocessing=False,
-            allow_tqdm=True,
-        )
+            # --- Inference ----------------------------------------------------
+            print(f"[nnUNet] Running inference on: {tmp_input}")
+            result_list = predictor.predict_from_files(
+                list_of_lists_or_source_folder=[[tmp_input]],
+                output_folder_or_list_of_truncated_output_files=out_dir,
+                num_processes_preprocessing=1,
+                num_processes_segmentation_export=1,
+            )
 
-        # Load the trained model weights
-        weights_path = os.path.join(
-            model_path,
-            "nnUNet_results",
-            "Dataset102_KidneyCT",
-            "nnUNetTrainer__nnUNetResEncUNetLPlans__3d_fullres",
-        )
-        print(f"[nnUNet] Looking for trained model weights in: {weights_path}")
-        predictor.initialize_from_trained_model_folder(
-            model_training_output_dir=weights_path,
-            use_folds=(0, 1, 2, 3, 4) if not run_fast else (0,),
-            checkpoint_name="checkpoint_best.pth",
-        )
-        print("[nnUNet] Model loaded successfully.")
+            # result_list should be something like ["/tmp/shdgi/RenalNet_out/renalnet_case.nii.gz"]
+            if result_list and isinstance(result_list[0], str):
+                seg_path = result_list[0]
+            else:
+                candidates = [
+                    p for p in (os.path.join(out_dir, CASE_STEM + e) for e in EXTENSIONS)
+                    if os.path.isfile(p)
+                ]
+                if len(candidates) != 1:
+                    raise RuntimeError(
+                        f"Expected exactly 1 segmentation named '{CASE_STEM}<ext>' in {out_dir}, "
+                        f"found {len(candidates)}. Contents: {os.listdir(out_dir)}"
+                    )
+                seg_path = candidates[0]
 
-        # Create a temporary directory under /tmp for nnU-Net’s outputs
-        tmp_output_dir = tempfile.mkdtemp(dir="/tmp")
-
-        # Run inference. Because we give an existing folder as output, nnU-Net writes a .nii.gz into it.
-        print(f"[nnUNet] Running inference on: {tmp_input}")
-        result_list = predictor.predict_from_files(
-            list_of_lists_or_source_folder=[[tmp_input]],
-            output_folder_or_list_of_truncated_output_files=tmp_output_dir,
-            num_processes_preprocessing=1,
-            num_processes_segmentation_export=1,
-        )
-
-        # result_list should be something like ["/tmp/tmpXYZ/CaseName_seg.nii.gz"]
-        seg_path = None
-        if result_list and isinstance(result_list[0], str):
-            seg_path = result_list[0]
-        else:
-            files = glob.glob(os.path.join(tmp_output_dir, "*.nii*"))
-            if not files:
-                raise RuntimeError(f"No segmentation found in {tmp_output_dir}")
-            seg_path = files[0]
-
-        print(f"[nnUNet] Using segmentation file at: {seg_path}")
-
-        # Read the segmentation back into SimpleITK
-        segmentation_sitk = sitk.ReadImage(seg_path)
-
-        # Clean up temporary files & directory
-        try:
-            os.remove(tmp_input)
-        except OSError:
-            pass
-
-        try:
-            shutil.rmtree(tmp_output_dir)
-        except OSError:
-            pass
-
-        # Return the SimpleITK segmentation image
-        return segmentation_sitk
-
+            print(f"[nnUNet] Using segmentation file at: {seg_path}")
+            # image at seg_path will be deleted when the TemporaryDirectory is cleaned up, so we read it into memory first
+            return sitk.ReadImage(seg_path)
+        
     except Exception as e:
         raise RuntimeError(f"Failed during segmentation: {e}") from e
