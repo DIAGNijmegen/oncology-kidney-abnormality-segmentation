@@ -12,6 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import json
 import os
 import tempfile
 
@@ -58,26 +59,41 @@ def segment_image(input_image, weights_path: str, run_fast: bool = False, presam
             os.makedirs(out_dir)
 
             # --- Resolve the input to a single path on disk -------------------
+            # nnU-Net truncates output filenames by len(file_ending) + 5 chars, so the temp
+            # input must use the model's declared file_ending, not the input's own extension.
+            with open(os.path.join(weights_path, "dataset.json")) as f:
+                file_ending = json.load(f)["file_ending"]
+
             if isinstance(input_image, sitk.Image):
                 image = resample_volume(input_image, new_spacing=new_spacing) if presample else input_image
-                tmp_input = os.path.join(in_dir, CASE_NAME + ".mha")
+                tmp_input = os.path.join(in_dir, CASE_NAME + file_ending)
                 sitk.WriteImage(image, tmp_input)
 
             elif isinstance(input_image, str):
-                ext = next((e for e in EXTENSIONS if input_image.endswith(e)), os.path.splitext(input_image)[1])
-                tmp_input = os.path.join(in_dir, CASE_NAME + ext)
-                if presample:
-                    sitk.WriteImage(resample_volume(sitk.ReadImage(input_image), new_spacing=new_spacing), tmp_input)
-                else:
+                tmp_input = os.path.join(in_dir, CASE_NAME + file_ending)
+                if not presample and input_image.endswith(file_ending):
                     # symlink: required to counter the nnU-Net quirk of truncating names
                     # no copy, and rmtree removes only the link, never the target
+                    # only safe when the real extension already matches file_ending, since
+                    # SimpleITK picks its reader from the filename extension, not the content
                     os.symlink(os.path.abspath(input_image), tmp_input)
+                else:
+                    image = sitk.ReadImage(input_image)
+                    if presample:
+                        image = resample_volume(image, new_spacing=new_spacing)
+                    sitk.WriteImage(image, tmp_input)
             else:
                 raise TypeError("segment_image: input_image must be sitk.Image or filepath")
 
             # --- Predictor ----------------------------------------------------
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
+            print(f"[nnUNet] Using device: {device}")
 
+            if device.type == "mps":
+                print("[nnUNet] MPS device detected. Setting environment variable 'PYTORCH_ENABLE_MPS_FALLBACK' to '1' to enable fallback for unsupported operations.")
+                os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+
+            
             predictor = nnUNetPredictor(
                 tile_step_size=0.5 if not run_fast else 0.8,
                 use_gaussian=True,
