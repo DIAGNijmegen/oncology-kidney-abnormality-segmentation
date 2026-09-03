@@ -24,11 +24,19 @@ from kidney_abnormality_segmentation.utils import resample_volume
 
 
 def build_predictor(weights_path, run_fast: bool = False, supported_folds=(0, 1, 2, 3, 4)) -> nnUNetPredictor:
+
+    # limit threads
     os.environ["OMP_NUM_THREADS"] = "1"
     os.environ["MKL_NUM_THREADS"] = "1"
     os.environ["NNUNET_NUM_PROCESSORS"] = "2"
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
+    print(f"[nnUNet] Using device: {device}")
+    if device.type == "mps":
+        print("[nnUNet] MPS device detected. Setting environment variable 'PYTORCH_ENABLE_MPS_FALLBACK' to '1' to enable fallback for unsupported operations.")
+        os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+
     predictor = nnUNetPredictor(
         tile_step_size=0.5 if not run_fast else 0.8,
         use_gaussian=True,
@@ -39,12 +47,14 @@ def build_predictor(weights_path, run_fast: bool = False, supported_folds=(0, 1,
         verbose_preprocessing=False,
         allow_tqdm=True,
     )
+
     print(f"[nnUNet] Looking for trained model weights in: {weights_path}")
     predictor.initialize_from_trained_model_folder(
         model_training_output_dir=weights_path,
         use_folds=supported_folds if not run_fast else (supported_folds[0],),
         checkpoint_name="checkpoint_best.pth",
     )
+    
     print("[nnUNet] Model loaded successfully.")
     return predictor
 
@@ -63,11 +73,6 @@ def segment_image(input_image, predictor: nnUNetPredictor, presample: bool = Fal
     Everything this function creates lives inside a single TemporaryDirectory that is
     removed automatically on exit. 
     """
-    # limit threads…
-    os.environ["OMP_NUM_THREADS"] = "1"
-    os.environ["MKL_NUM_THREADS"] = "1"
-    os.environ["NNUNET_NUM_PROCESSORS"] = "2"
-
     new_spacing = (0.75, 0.75, 0.75)
     CASE_NAME = "temporary_copy_0000" # must be longer than 12 characters. (nnUnet truncates len(_0000.nii.gz) characters from the end of the filename)
 
