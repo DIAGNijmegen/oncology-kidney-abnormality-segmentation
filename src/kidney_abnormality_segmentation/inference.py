@@ -19,22 +19,16 @@ from pathlib import Path
 from kidney_abnormality_segmentation.config import ensure_totalsegmentator_env
 ensure_totalsegmentator_env()
 
-from kidney_abnormality_segmentation.postprocessing.postprocess_segmentation_mask import (
-    postprocess_segmentation_mask,
-)
+from kidney_abnormality_segmentation.postprocessing.postprocess_segmentation_mask import postprocess_segmentation_mask
 from kidney_abnormality_segmentation.preprocessing.extract_roi import extract_roi
-from kidney_abnormality_segmentation.segmentation.segment_ct_image import (
-    segment_image,
-)
+from kidney_abnormality_segmentation.segmentation.segment_ct_image import build_predictor, segment_image
 from kidney_abnormality_segmentation.utils import resample_volume, stem
 
 
 def run(all_cts,  weights_path: Path, output_path: Path, crop_roi: bool = False, run_fast:bool = False, mri: bool = False, presample: bool = False):
 
-    if mri:
-        supported_folds = ("all",)
-    else:
-        supported_folds = (0, 1, 2, 3, 4)  
+    supported_folds = ("all",) if mri else (0, 1, 2, 3, 4)  
+    predictor = build_predictor(weights_path, run_fast=run_fast, supported_folds=supported_folds)
 
     for input_ct_image_path in all_cts:
         print(f"[run] Processing {input_ct_image_path.name}")
@@ -77,7 +71,7 @@ def run(all_cts,  weights_path: Path, output_path: Path, crop_roi: bool = False,
 
         # 4) Segment (this now never loads the full on-disk CT into RAM)
         print("[run] Calling segment_ct_image() …")
-        segmentation_sitk = segment_image(input_for_seg, str(weights_path), run_fast=run_fast, presample=presample, supported_folds=supported_folds)
+        segmentation_sitk = segment_image(input_for_seg, predictor, presample=presample)
 
         # 5) Free any remaining cropped image if it was in RAM
         if isinstance(input_for_seg, SimpleITK.Image):

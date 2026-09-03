@@ -119,7 +119,8 @@ def initialize_parser() -> argparse.Namespace:
     parser.add_argument(
         "--presample",
         action="store_true",
-        help="Resample input images to 0.75mm isotropic spacing before inference (default: disabled). This resolves memory issues specifically on the Grand Challenge platform.",
+        help="""Resample input images to 0.75mm isotropic spacing before inference (default: disabled).
+        This resolves memory issues specifically on the Grand Challenge platform.""",
         default=False,
     )
 

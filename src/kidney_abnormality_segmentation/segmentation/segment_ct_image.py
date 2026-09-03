@@ -23,15 +23,37 @@ from kidney_abnormality_segmentation.config import EXTENSIONS
 from kidney_abnormality_segmentation.utils import resample_volume
 
 
-def segment_image(input_image, weights_path: str, run_fast: bool = False, presample: bool = False, supported_folds = (0, 1, 2, 3, 4)) -> sitk.Image:
+def build_predictor(weights_path, run_fast: bool = False, supported_folds=(0, 1, 2, 3, 4)) -> nnUNetPredictor:
+    os.environ["OMP_NUM_THREADS"] = "1"
+    os.environ["MKL_NUM_THREADS"] = "1"
+    os.environ["NNUNET_NUM_PROCESSORS"] = "2"
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    predictor = nnUNetPredictor(
+        tile_step_size=0.5 if not run_fast else 0.8,
+        use_gaussian=True,
+        use_mirroring=not run_fast,
+        perform_everything_on_device=True,
+        device=device,
+        verbose=False,
+        verbose_preprocessing=False,
+        allow_tqdm=True,
+    )
+    print(f"[nnUNet] Looking for trained model weights in: {weights_path}")
+    predictor.initialize_from_trained_model_folder(
+        model_training_output_dir=weights_path,
+        use_folds=supported_folds if not run_fast else (supported_folds[0],),
+        checkpoint_name="checkpoint_best.pth",
+    )
+    print("[nnUNet] Model loaded successfully.")
+    return predictor
+
+
+def segment_image(input_image, predictor: nnUNetPredictor, presample: bool = False) -> sitk.Image:
     """
     input_image: either a SimpleITK.Image or a string path to a .mha file
-    weights_path: path to the directory containing the trained model weights
-    run_fast: use a faster but less accurate inference mode
     presample: resample the input image to 0.75mm isotropic spacing before inference 
         (this resolves memory issues specifically on the Grand Challenge platform)
-    supported_folds: tuple of fold indices to use for inference (default is all folds 0-4)
-        (for MRI this needs to be (all,))
 
     Behaviour:
       - path input, presample=False  -> file is used directly, untouched
@@ -74,27 +96,6 @@ def segment_image(input_image, weights_path: str, run_fast: bool = False, presam
             else:
                 raise TypeError("segment_image: input_image must be sitk.Image or filepath")
 
-            # --- Predictor ----------------------------------------------------
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-            predictor = nnUNetPredictor(
-                tile_step_size=0.5 if not run_fast else 0.8,
-                use_gaussian=True,
-                use_mirroring= not run_fast,
-                perform_everything_on_device=True,
-                device=device,
-                verbose=False,
-                verbose_preprocessing=False,
-                allow_tqdm=True,
-            )
-
-            print(f"[nnUNet] Looking for trained model weights in: {weights_path}")
-            predictor.initialize_from_trained_model_folder(
-                model_training_output_dir=weights_path,
-                use_folds= supported_folds if not run_fast else (supported_folds[0],),
-                checkpoint_name="checkpoint_best.pth",
-            )
-            print("[nnUNet] Model loaded successfully.")
 
             # --- Inference ----------------------------------------------------
             print(f"[nnUNet] Running inference on: {tmp_input}")
