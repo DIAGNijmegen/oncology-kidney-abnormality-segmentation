@@ -19,15 +19,16 @@ from pathlib import Path
 from kidney_abnormality_segmentation.config import ensure_totalsegmentator_env
 ensure_totalsegmentator_env()
 
-from kidney_abnormality_segmentation.config import EXTENSIONS
+from kidney_abnormality_segmentation.config import EXTENSIONS, CT_MODEL_PATH, MRI_MODEL_PATH
 from kidney_abnormality_segmentation.postprocessing.postprocess_segmentation_mask import postprocess_segmentation_mask
 from kidney_abnormality_segmentation.preprocessing.extract_roi import extract_roi
 from kidney_abnormality_segmentation.segmentation.segment_ct_image import build_predictor, segment_image
 from kidney_abnormality_segmentation.utils import resample_volume, stem
 
 
-def run(all_cts,  weights_path: Path, output_path: Path, crop_roi: bool = False, run_fast:bool = False, mri: bool = False, presample: bool = False):
+def run(all_cts,  model_path: Path, output_path: Path, crop_roi: bool = False, run_fast:bool = False, mri: bool = False, presample: bool = False):
 
+    weights_path = model_path / (MRI_MODEL_PATH if mri else CT_MODEL_PATH)
     supported_folds = ("all",) if mri else (0, 1, 2, 3, 4)  
     predictor = build_predictor(weights_path, run_fast=run_fast, supported_folds=supported_folds)
 

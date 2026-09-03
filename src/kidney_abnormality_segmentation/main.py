@@ -147,13 +147,11 @@ def main():
 
     # Check weights path
     if args.mri:
-        weights_path = args.model_path / MRI_MODEL_PATH
-        if not weights_path.exists():
+        if not (args.model_path / MRI_MODEL_PATH).exists():
             raise FileNotFoundError(f"Model base path does not include the required MRI model folder: {MRI_MODEL_PATH}",
                                     "Weights will soon be made available.")
     else:
-        weights_path = args.model_path / CT_MODEL_PATH
-        if not weights_path.exists():
+        if not (args.model_path / CT_MODEL_PATH).exists():
             raise FileNotFoundError(f"Model base path does not include the required CT model folder: {CT_MODEL_PATH}",
                                     "Weights are available at: https://doi.org/10.5281/zenodo.15315330")
 
@@ -190,7 +188,7 @@ def main():
         print("[main] Running segmentation in fast mode.")
 
     from kidney_abnormality_segmentation.inference import run  
-    run(all_cts, weights_path, args.output_path, args.use_cropping, args.fast, args.mri, presample=args.presample)
+    run(all_cts, args.model_path, args.output_path, args.use_cropping, args.fast, args.mri, presample=args.presample)
 
     
 if __name__ == "__main__":
