@@ -93,7 +93,7 @@ def initialize_parser() -> argparse.Namespace:
                         "--output-path", 
                         type=Path, 
                         default="onco_segmentations", 
-                        help="output directory")
+                        help="output image or directory")
 
     parser.add_argument(
         "--use-cropping",
@@ -157,8 +157,11 @@ def main():
             raise FileNotFoundError(f"Model base path does not include the required CT model folder: {CT_MODEL_PATH}",
                                     "Weights are available at: https://doi.org/10.5281/zenodo.15315330")
 
-    # Output path
-    if not args.output_path.exists():
+    # Output
+    # If and only if input is a singluar file and output has a supported extension, then treat output as a file path. Otherwise, treat it as a directory.
+    if input_path.is_file() and any(str(args.output_path).endswith(ext) for ext in EXTENSIONS):
+        args.output_path.parent.mkdir(parents=True, exist_ok=True)
+    else:
         args.output_path.mkdir(parents=True, exist_ok = True)
 
     # Read files

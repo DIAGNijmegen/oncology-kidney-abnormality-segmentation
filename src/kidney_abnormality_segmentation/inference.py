@@ -19,6 +19,7 @@ from pathlib import Path
 from kidney_abnormality_segmentation.config import ensure_totalsegmentator_env
 ensure_totalsegmentator_env()
 
+from kidney_abnormality_segmentation.config import EXTENSIONS
 from kidney_abnormality_segmentation.postprocessing.postprocess_segmentation_mask import postprocess_segmentation_mask
 from kidney_abnormality_segmentation.preprocessing.extract_roi import extract_roi
 from kidney_abnormality_segmentation.segmentation.segment_ct_image import build_predictor, segment_image
@@ -41,13 +42,23 @@ def run(all_cts,  weights_path: Path, output_path: Path, crop_roi: bool = False,
         )
         out_folder = output_path
 
-        # find output
-        out_path = out_folder / f"{image_name}{file_extension}"
+        # define output location
+        if any(str(output_path).endswith(ext) for ext in EXTENSIONS):
+            if len(all_cts) > 1:
+                raise ValueError(
+                    f"Output path {output_path} is a file, but multiple input images were provided. Please provide a directory for output."
+                )
+            out_path = out_folder
+        else:
+            out_path = out_folder / f"{image_name}{file_extension}"
+
+        # skip already segmented images
         if out_path.is_file():
             print(
                 f"[run] Skipping {input_ct_image_path.name} because output segmentation already exists for this image."
             )
             continue
+        
         # 3) Decide what to hand to segment_ct_image:
         #    - If cropping: read into memory, crop, then pass the cropped SITK.Image.
         #    - If no cropping: NEVER read the full CT. Pass the filepath string instead.
