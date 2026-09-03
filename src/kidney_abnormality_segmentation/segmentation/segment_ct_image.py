@@ -47,8 +47,7 @@ def segment_image(input_image, weights_path: str, run_fast: bool = False, presam
     os.environ["NNUNET_NUM_PROCESSORS"] = "2"
 
     new_spacing = (0.75, 0.75, 0.75)
-    CASE_STEM = "renalnet_case"
-    CASE_NAME = CASE_STEM + "_0000" # add a suffic of size 5, will be removed by the nnUnet predictor later (nnU-Net quirk)
+    CASE_NAME = "temporary_copy_0000" # must be longer than 12 characters. (nnUnet truncates len(_0000.nii.gz) characters from the end of the filename)
 
     try:
         with tempfile.TemporaryDirectory(dir="/tmp") as tmp_dir:
@@ -110,16 +109,14 @@ def segment_image(input_image, weights_path: str, run_fast: bool = False, presam
             if result_list and isinstance(result_list[0], str):
                 seg_path = result_list[0]
             else:
-                candidates = [
-                    p for p in (os.path.join(out_dir, CASE_STEM + e) for e in EXTENSIONS)
-                    if os.path.isfile(p)
-                ]
+                seg_ext = predictor.dataset_json["file_ending"]
+                candidates = [f for f in os.listdir(out_dir) if f.endswith(seg_ext)]
                 if len(candidates) != 1:
                     raise RuntimeError(
-                        f"Expected exactly 1 segmentation named '{CASE_STEM}<ext>' in {out_dir}, "
+                        f"Expected exactly 1 segmentation with extension '{seg_ext}' in {out_dir}, "
                         f"found {len(candidates)}. Contents: {os.listdir(out_dir)}"
                     )
-                seg_path = candidates[0]
+                seg_path = os.path.join(out_dir, candidates[0])
 
             print(f"[nnUNet] Using segmentation file at: {seg_path}")
             # image at seg_path will be deleted when the TemporaryDirectory is cleaned up, so we read it into memory first
