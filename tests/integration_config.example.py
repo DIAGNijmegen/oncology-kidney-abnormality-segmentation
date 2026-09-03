@@ -19,3 +19,9 @@ TEST_CT_FILES = [
     Path("/path/to/ct_image_2.nii.gz"),
     Path("/path/to/ct_image_3.mha"),
 ]
+
+TEST_MRI_FILES = [
+    Path("/path/to/mri_image_1.nii"),
+    Path("/path/to/mri_image_2.mha"),
+    Path("/path/to/mri_image_3.nii.gz"),
+]
