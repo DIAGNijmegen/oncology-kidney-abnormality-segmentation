@@ -28,6 +28,9 @@ from kidney_abnormality_segmentation.utils import resample_volume, stem
 
 def run(all_cts,  model_path: Path, output_path: Path, crop_roi: bool = False, run_fast:bool = False, mri: bool = False, presample: bool = False):
 
+    if mri and crop_roi:
+        raise ValueError("Cropping ROI is not supported for MR images.")
+
     weights_path = model_path / (MRI_MODEL_PATH if mri else CT_MODEL_PATH)
     supported_folds = ("all",) if mri else (0, 1, 2, 3, 4)  
     predictor = build_predictor(weights_path, run_fast=run_fast, supported_folds=supported_folds)
