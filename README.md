@@ -44,7 +44,8 @@ renal-net  \
 -i --input-path <path> \
 -m --model-path <path>\
 -o --output-path (optional) <path> \
---use-cropping (optional)
+--fast (optional) \
+--use-cropping (optional) 
 ```
 Model path should point to the directory above `nnUNet_results`.
 
