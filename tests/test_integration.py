@@ -30,20 +30,32 @@ except ImportError:
         cfg = None
 
 if cfg is None:
-    pytest.skip(
-        "integration_config.py not found — copy integration_config.py.example and fill in paths.",
-        allow_module_level=True,
+    raise RuntimeError(
+        "integration_config.py not found. "
+        "Copy integration_config.py.example to integration_config.py "
+        "and fill in the required paths."
     )
 
 MODEL_PATH: Path = cfg.MODEL_PATH
 TEST_CT_FILES: list = cfg.TEST_CT_FILES
+TEST_MRI_FILES: list = cfg.TEST_MRI_FILES
 
 if not MODEL_PATH.exists():
-    pytest.skip(f"MODEL_PATH does not exist: {MODEL_PATH}", allow_module_level=True)
+    raise FileNotFoundError(f"Model path does not exist: {MODEL_PATH}")
 
-missing = [p for p in TEST_CT_FILES if not p.exists()]
-if missing:
-    pytest.skip(f"Some TEST_CT_FILES do not exist: {missing}", allow_module_level=True)
+missing_ct = [p for p in TEST_CT_FILES if not p.is_file()]
+missing_mri = [p for p in TEST_MRI_FILES if not p.is_file()]
+
+if missing_ct or missing_mri:
+    problems = []
+
+    if missing_ct:
+        problems.append(f"Missing CT files: {missing_ct}")
+
+    if missing_mri:
+        problems.append(f"Missing MRI files: {missing_mri}")
+
+    raise FileNotFoundError("\n".join(problems))
 
 FIGURES_DIR = Path("reports/figures")
 
@@ -53,10 +65,9 @@ FIGURES_DIR = Path("reports/figures")
 
 
 def _get_output_path(output_dir: Path, ct_path: Path) -> Path:
-    from kidney_abnormality_segmentation.config import CT_EXTENSIONS
     from kidney_abnormality_segmentation.utils import stem
     name = stem(str(ct_path))
-    ext = next((e for e in CT_EXTENSIONS if str(ct_path).endswith(e)), ".mha")
+    ext = ".mha" if str(ct_path).endswith(".mha") else ".nii.gz"
     return output_dir / f"{name}{ext}"
 
 
@@ -95,36 +106,51 @@ def _save_and_attach(extra, ct_path: Path, output_path: Path, img_name: str):
 # Tests
 # ---------------------------------------------------------------------------
 
-IDS = [f"img{i+1}" for i in range(len(TEST_CT_FILES))]
+CT_IDS = [f"ct{i+1}" for i in range(len(TEST_CT_FILES))]
+MRI_IDS = [f"mri{i+1}" for i in range(len(TEST_MRI_FILES))]
 
 
-@pytest.mark.parametrize("ct_path,img_id", zip(TEST_CT_FILES, IDS), ids=IDS)
-def test_pipeline_no_crop(ct_path, img_id, tmp_path, extra):
-    """Full pipeline without ROI cropping — one run per image."""
+@pytest.mark.parametrize("ct_path,img_id", zip(TEST_CT_FILES, CT_IDS), ids=CT_IDS)
+def test_ct_pipeline_no_crop(ct_path, img_id, tmp_path, extra):
+    """Full CT pipeline without ROI cropping — one run per image."""
     from kidney_abnormality_segmentation import inference
 
     output_dir = tmp_path / "no_crop"
     output_dir.mkdir()
-    inference.run(all_cts=[ct_path], model_path=MODEL_PATH,
+    inference.run(all_images=[ct_path], model_path=MODEL_PATH,
                   output_path=output_dir, crop_roi=False, run_fast=True)
 
     output_file = _get_output_path(output_dir, ct_path)
     _save_and_attach(extra, ct_path, output_file, f"{img_id}_no_crop")
-    _assert_valid_segmentation(output_file, ct_path)
-    
+    _assert_valid_segmentation(output_file, ct_path)    
 
 
-@pytest.mark.parametrize("ct_path,img_id", zip(TEST_CT_FILES, IDS), ids=IDS)
-def test_pipeline_crop(ct_path, img_id, tmp_path, extra):
-    """Full pipeline with ROI cropping — one run per image."""
+@pytest.mark.parametrize("ct_path,img_id", zip(TEST_CT_FILES, CT_IDS), ids=CT_IDS)
+def test_ct_pipeline_crop(ct_path, img_id, tmp_path, extra):
+    """Full CT pipeline with ROI cropping — one run per image."""
     from kidney_abnormality_segmentation import inference
 
     output_dir = tmp_path / "crop"
     output_dir.mkdir()
-    inference.run(all_cts=[ct_path], model_path=MODEL_PATH,
+    inference.run(all_images=[ct_path], model_path=MODEL_PATH,
                   output_path=output_dir, crop_roi=True, run_fast=True)
 
     output_file = _get_output_path(output_dir, ct_path)
     _save_and_attach(extra, ct_path, output_file, f"{img_id}_crop")
     _assert_valid_segmentation(output_file, ct_path)
+
+
+@pytest.mark.parametrize("mri_path,img_id", zip(TEST_MRI_FILES, MRI_IDS), ids=MRI_IDS)
+def test_mri_pipeline_no_crop(mri_path, img_id, tmp_path, extra):
+    """Full MRI pipeline without ROI cropping — one run per image."""
+    from kidney_abnormality_segmentation import inference
+
+    output_dir = tmp_path / "no_crop"
+    output_dir.mkdir()
+    inference.run(all_images=[mri_path], model_path=MODEL_PATH,
+                  output_path=output_dir, crop_roi=False, run_fast=True, mri=True)
+
+    output_file = _get_output_path(output_dir, mri_path)
+    _save_and_attach(extra, mri_path, output_file, f"MRI_{img_id}_no_crop")
+    _assert_valid_segmentation(output_file, mri_path)
     
