@@ -22,11 +22,11 @@ ensure_totalsegmentator_env()
 from kidney_abnormality_segmentation.config import EXTENSIONS, CT_MODEL_PATH, MRI_MODEL_PATH
 from kidney_abnormality_segmentation.postprocessing.postprocess_segmentation_mask import postprocess_segmentation_mask
 from kidney_abnormality_segmentation.preprocessing.extract_roi import extract_roi
-from kidney_abnormality_segmentation.segmentation.segment_ct_image import build_predictor, segment_image
+from kidney_abnormality_segmentation.segmentation.segment_image import build_predictor, segment_image
 from kidney_abnormality_segmentation.utils import resample_volume, stem
 
 
-def run(all_cts,  model_path: Path, output_path: Path, crop_roi: bool = False, run_fast:bool = False, mri: bool = False, presample: bool = False):
+def run(all_images,  model_path: Path, output_path: Path, crop_roi: bool = False, run_fast:bool = False, mri: bool = False, presample: bool = False):
 
     if mri and crop_roi:
         raise ValueError("Cropping ROI is not supported for MR images.")
@@ -35,20 +35,20 @@ def run(all_cts,  model_path: Path, output_path: Path, crop_roi: bool = False, r
     supported_folds = ("all",) if mri else (0, 1, 2, 3, 4)  
     predictor = build_predictor(weights_path, run_fast=run_fast, supported_folds=supported_folds)
 
-    for input_ct_image_path in all_cts:
-        print(f"[run] Processing {input_ct_image_path.name}")
-        if input_ct_image_path.name.startswith("."):
-            print(f"[run] Skipping {input_ct_image_path.name} because not an image.")
+    for input_image_path in all_images:
+        print(f"[run] Processing {input_image_path.name}")
+        if input_image_path.name.startswith("."):
+            print(f"[run] Skipping {input_image_path.name} because not an image.")
             continue
-        image_name = stem(str(input_ct_image_path))
+        image_name = stem(str(input_image_path))
         file_extension = (
-            ".mha" if str(input_ct_image_path).endswith(".mha") else ".nii.gz"
+            ".mha" if str(input_image_path).endswith(".mha") else ".nii.gz"
         )
         out_folder = output_path
 
         # define output location
         if any(str(output_path).endswith(ext) for ext in EXTENSIONS):
-            if len(all_cts) > 1:
+            if len(all_images) > 1:
                 raise ValueError(
                     f"Output path {output_path} is a file, but multiple input images were provided. Please provide a directory for output."
                 )
@@ -59,33 +59,33 @@ def run(all_cts,  model_path: Path, output_path: Path, crop_roi: bool = False, r
         # skip already segmented images
         if out_path.is_file():
             print(
-                f"[run] Skipping {input_ct_image_path.name} because output segmentation already exists for this image."
+                f"[run] Skipping {input_image_path.name} because output segmentation already exists for this image."
             )
             continue
         
-        # 3) Decide what to hand to segment_ct_image:
+        # 3) Decide what to hand to segment_image:
         #    - If cropping: read into memory, crop, then pass the cropped SITK.Image.
         #    - If no cropping: NEVER read the full CT. Pass the filepath string instead.
-        orig_spacing = SimpleITK.ReadImage(str(input_ct_image_path)).GetSpacing()
+        orig_spacing = SimpleITK.ReadImage(str(input_image_path)).GetSpacing()
         if crop_roi:
             print("[run] Cropping ROI; will read full CT into memory.")
-            full_ct = SimpleITK.ReadImage(str(input_ct_image_path))
+            full_image = SimpleITK.ReadImage(str(input_image_path))
             try:
-                input_for_seg = extract_roi(full_ct)
+                input_for_seg = extract_roi(full_image)
             except RuntimeError as e:
                 print(f"[run] ROI extraction failed ({e}), falling back to segmenting the full CT.")
-                input_for_seg = str(input_ct_image_path)
+                input_for_seg = str(input_image_path)
             # free the full CT
-            del full_ct
+            del full_image
             gc.collect()
         else:
             print(
-                "[run] No cropping requested; will segment from disk without reading full CT."
+                "[run] No cropping requested; will segment from disk without reading full Image."
             )
-            input_for_seg = str(input_ct_image_path)
+            input_for_seg = str(input_image_path)
 
-        # 4) Segment (this now never loads the full on-disk CT into RAM)
-        print("[run] Calling segment_ct_image() …")
+        # 4) Segment (this now never loads the full on-disk image into RAM)
+        print("[run] Calling segment_image() …")
         segmentation_sitk = segment_image(input_for_seg, predictor, presample=presample)
 
         # 5) Free any remaining cropped image if it was in RAM

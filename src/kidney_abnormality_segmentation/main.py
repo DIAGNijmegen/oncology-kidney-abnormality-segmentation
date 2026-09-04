@@ -136,7 +136,7 @@ def initialize_parser() -> argparse.Namespace:
 def main():
     args = initialize_parser()
 
-    # List all CT files under /input
+    # List all CT/MRI files under /input
     input_path = args.input_path
     if not input_path.exists():
         raise FileNotFoundError(f"Input does not exist: {input_path}")
@@ -166,7 +166,7 @@ def main():
     if input_path.is_dir():
         try:
             patterns = ["*"+ext for ext in EXTENSIONS]
-            all_cts = [
+            all_images = [
                 file
                 for pattern in patterns
                 for file in input_path.rglob(pattern)
@@ -177,18 +177,18 @@ def main():
     else:
         if not any(str(input_path).endswith(ext) for ext in EXTENSIONS):
             raise ValueError(f"File type not support. Supported files are: {EXTENSIONS}")
-        all_cts = [input_path]
+        all_images = [input_path]
 
-    if not all_cts:
-        print(f"No CT files found under {input_path}")
+    if not all_images:
+        print(f"No image files found under {input_path}")
         sys.exit(1)
 
-    print(f"[main] Found {len(all_cts)} input CTs to process")
+    print(f"[main] Found {len(all_images)} input images to process")
     if args.fast:
         print("[main] Running segmentation in fast mode.")
 
     from kidney_abnormality_segmentation.inference import run  
-    run(all_cts, args.model_path, args.output_path, args.use_cropping, args.fast, args.mri, presample=args.presample)
+    run(all_images, args.model_path, args.output_path, args.use_cropping, args.fast, args.mri, presample=args.presample)
 
     
 if __name__ == "__main__":
