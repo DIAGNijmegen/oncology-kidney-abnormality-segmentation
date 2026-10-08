@@ -4,11 +4,13 @@
 </h1>
 
 
-This repository contains the code to setup the pipeline to run the Kidney Abnormality Segmentation model on CT scans. When you use this code base and the corresponding model weights, please cite our work: [kidney abnormality segmentation paper](https://doi.org/10.59275/j.melba.2026-67g5). The pipeline uses nnUNet [[1]](#1),[[2]](#2) and TotalSegmentator [[3]](#3), please also cite these works. 
+This repository contains the code to setup the pipeline to run the Kidney Abnormality Segmentation model for CT and MRI. When you use this code base and the corresponding model weights, please cite our work: [kidney abnormality segmentation paper](https://doi.org/10.59275/j.melba.2026-67g5). The pipeline uses nnUNet [[1]](#1),[[2]](#2) and TotalSegmentator [[3]](#3), please also cite these works. 
 
 ## Model weights and version
 
-The model weights can be downloaded from Zenodo: [model weights download](https://doi.org/10.5281/zenodo.15315330).
+The model weights can be downloaded from Zenodo: 
+- [CT model weights](https://doi.org/10.5281/zenodo.15315330)
+- [MRI model weights](https://zenodo.org/records/23212026).
 
 Model version: nnU-Net ResEnc L 3D fullres
 
@@ -18,7 +20,7 @@ Segmentation label map:
 `2` — Renal mass, not further specified as cystic/solid mass
 
 ## Grand-challenge algorithm
-A ready to use algorithm for research purposes is also available on grand-challenge.org: [algorithm](https://grand-challenge.org/algorithms/kidney-abnormality-segmentation/).
+A ready to use the CT algorithm for research purposes is also available on grand-challenge.org: [algorithm](https://grand-challenge.org/algorithms/kidney-abnormality-segmentation/).
 
 ## Setup
 The repository contains a [Dockerfile]() that can be used to create the environment. Alternatively, you can use conda or a venv with at least python 3.11 and the requirements (see [requirements](requirements.yml)).
@@ -44,6 +46,7 @@ renal-net  \
 -i --input-path <path> \
 -m --model-path <path>\
 -o --output-path (optional) <path> \
+--mri (optional) \
 --fast (optional) \
 --use-cropping (optional) 
 ```

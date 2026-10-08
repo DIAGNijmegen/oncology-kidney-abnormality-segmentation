@@ -149,7 +149,7 @@ def main():
     if args.mri:
         if not (args.model_path / MRI_MODEL_PATH).exists():
             raise FileNotFoundError(f"Model base path does not include the required MRI model folder: {MRI_MODEL_PATH}",
-                                    "Weights will soon be made available.")
+                                    "Weights are available at: https://zenodo.org/records/23212026")
     else:
         if not (args.model_path / CT_MODEL_PATH).exists():
             raise FileNotFoundError(f"Model base path does not include the required CT model folder: {CT_MODEL_PATH}",
