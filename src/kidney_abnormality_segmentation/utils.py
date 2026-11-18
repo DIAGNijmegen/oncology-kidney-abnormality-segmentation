@@ -103,14 +103,15 @@ def crop_image(
     cropped_image = sitk.RegionOfInterest(input_image, size=size, index=index)
     return cropped_image
 
+
 def convert_numpy_to_python(obj):
     """
     Convert numpy objects to native Python data types for JSON serialization.
     If the object is already a native Python type, return it unchanged.
     """
-    if isinstance(obj, (np.integer, np.int_)):
+    if isinstance(obj, (np.integer)):
         return int(obj)
-    elif isinstance(obj, (np.floating, np.float_)):
+    elif isinstance(obj, (np.floating)):
         return float(obj)
     elif isinstance(obj, np.ndarray):
         return obj.tolist()

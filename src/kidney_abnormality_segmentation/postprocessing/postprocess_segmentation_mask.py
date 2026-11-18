@@ -38,6 +38,7 @@ def process_tumors(
     """
     filter = sitk.ConnectedComponentImageFilter()
     # this returns a label in the mask for each connected component
+    filter.SetFullyConnected(True)
     tumor_cc = filter.Execute(tumor_mask)
     num_components = filter.GetObjectCount()
 
@@ -110,7 +111,9 @@ def apply_size_threshold(
     Input: binary mask
     Output: binary mask
     """
-    labeled = sitk.RelabelComponentImageFilter().Execute(tumor_mask)
+    labeled = sitk.ConnectedComponent(
+        tumor_mask, True
+    )  # one label per component (26-connected)
 
     stats3d = sitk.LabelShapeStatisticsImageFilter()
     stats3d.Execute(labeled)
@@ -170,7 +173,7 @@ def combine_masks(kidney_mask: sitk.Image, tumor_mask: sitk.Image) -> sitk.Image
     kidney_only = sitk.And(kidney_binary, sitk.Not(tumor_binary))
 
     # Resolve any overlapping regions (if necessary, prioritize higher label)
-    kidney_labeled = sitk.Cast(kidney_only, sitk.sitkUInt8) # Kidney label is 1
+    kidney_labeled = sitk.Cast(kidney_only, sitk.sitkUInt8)  # Kidney label is 1
     tumor_labeled = sitk.Cast(tumor_binary, sitk.sitkUInt8) * 2  # Tumor label is 2
 
     return sitk.Add(kidney_labeled, tumor_labeled)
@@ -191,8 +194,8 @@ def get_largest_cc(
     tumor_mask = process_tumors(
         binary_tumor_mask,
         kidney_mask,
-        diameter_threshold,
-        keep_large_tumors,
+        diameter_threshold=diameter_threshold,
+        keep_large_tumors=keep_large_tumors,
     )
 
     # Combine the kidney and connected tumor masks
