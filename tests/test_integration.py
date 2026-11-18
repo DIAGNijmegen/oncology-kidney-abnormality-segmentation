@@ -38,22 +38,22 @@ if cfg is None:
 
 MODEL_PATH: Path = cfg.MODEL_PATH
 TEST_CT_FILES: list = cfg.TEST_CT_FILES
-# TEST_MRI_FILES: list = cfg.TEST_MRI_FILES
+TEST_MRI_FILES: list = cfg.TEST_MRI_FILES
 
 if not MODEL_PATH.exists():
     raise FileNotFoundError(f"Model path does not exist: {MODEL_PATH}")
 
 missing_ct = [p for p in TEST_CT_FILES if not p.is_file()]
-# missing_mri = [p for p in TEST_MRI_FILES if not p.is_file()]
+missing_mri = [p for p in TEST_MRI_FILES if not p.is_file()]
 
-if missing_ct:  # or missing_mri:
+if missing_ct or missing_mri:
     problems = []
 
     if missing_ct:
         problems.append(f"Missing CT files: {missing_ct}")
 
-    # if missing_mri:
-    #     problems.append(f"Missing MRI files: {missing_mri}")
+    if missing_mri:
+        problems.append(f"Missing MRI files: {missing_mri}")
 
     raise FileNotFoundError("\n".join(problems))
 
@@ -109,7 +109,7 @@ def _save_and_attach(extra, ct_path: Path, output_path: Path, img_name: str):
 # ---------------------------------------------------------------------------
 
 CT_IDS = [f"ct{i+1}" for i in range(len(TEST_CT_FILES))]
-# MRI_IDS = [f"mri{i+1}" for i in range(len(TEST_MRI_FILES))]
+MRI_IDS = [f"mri{i+1}" for i in range(len(TEST_MRI_FILES))]
 
 
 @pytest.mark.parametrize("ct_path,img_id", zip(TEST_CT_FILES, CT_IDS), ids=CT_IDS)
@@ -152,16 +152,22 @@ def test_ct_pipeline_crop(ct_path, img_id, tmp_path, extra):
     _assert_valid_segmentation(output_file, ct_path)
 
 
-# @pytest.mark.parametrize("mri_path,img_id", zip(TEST_MRI_FILES, MRI_IDS), ids=MRI_IDS)
-# def test_mri_pipeline_no_crop(mri_path, img_id, tmp_path, extra):
-#     """Full MRI pipeline without ROI cropping — one run per image."""
-#     from kidney_abnormality_segmentation import inference
+@pytest.mark.parametrize("mri_path,img_id", zip(TEST_MRI_FILES, MRI_IDS), ids=MRI_IDS)
+def test_mri_pipeline_no_crop(mri_path, img_id, tmp_path, extra):
+    """Full MRI pipeline without ROI cropping — one run per image."""
+    from kidney_abnormality_segmentation import inference
 
-#     output_dir = tmp_path / "no_crop"
-#     output_dir.mkdir()
-#     inference.run(all_images=[mri_path], model_path=MODEL_PATH,
-#                   output_path=output_dir, crop_roi=False, run_fast=True, mri=True)
+    output_dir = tmp_path / "no_crop"
+    output_dir.mkdir()
+    inference.run(
+        all_images=[mri_path],
+        model_path=MODEL_PATH,
+        output_path=output_dir,
+        crop_roi=False,
+        run_fast=True,
+        mri=True,
+    )
 
-#     output_file = _get_output_path(output_dir, mri_path)
-#     _save_and_attach(extra, mri_path, output_file, f"MRI_{img_id}_no_crop")
-#     _assert_valid_segmentation(output_file, mri_path)
+    output_file = _get_output_path(output_dir, mri_path)
+    _save_and_attach(extra, mri_path, output_file, f"MRI_{img_id}_no_crop")
+    _assert_valid_segmentation(output_file, mri_path)
